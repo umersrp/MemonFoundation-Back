@@ -22,13 +22,13 @@ jobs:
         env:
           EC2_HOST_MAIN: ${{ secrets.EC2_HOST_MAIN }}
         run: |
-          echo "Connecting to EC2 and deploying carbon-backend..."
+          echo "Connecting to EC2 and deploying MemonFoundation-back.....
 
           ssh -o StrictHostKeyChecking=no ec2-user@$EC2_HOST_MAIN << 'EOF'
             set -ex
 
             echo "Navigating to project directory..."
-            cd /repos/CarbonX-Emissions
+            cd /repos/MemonFoundation-Back
 
             echo "Pulling latest changes using SSH..."
             git remote set-url origin git@github.com:umersrp/MemonFoundation-Back.git
