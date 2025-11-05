@@ -1,0 +1,13 @@
+services:
+  
+  carbon:
+    container_name: backend
+    env_file:
+      - .env
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - ${PORTAL_PORT}:3000
+
