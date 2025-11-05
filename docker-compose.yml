@@ -9,5 +9,5 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - ${PORTAL_PORT}:3000
+      - ${PORTAL_PORT}:3100
 
