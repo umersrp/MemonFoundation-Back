@@ -22,7 +22,7 @@ jobs:
         env:
           EC2_HOST_MAIN: ${{ secrets.EC2_HOST_MAIN }}
         run: |
-          echo "Connecting to EC2 and deploying MemonFoundation-back.....
+          echo "Connecting to EC2 and deploying MemonFoundation-back....."
 
           ssh -o StrictHostKeyChecking=no ec2-user@$EC2_HOST_MAIN << 'EOF'
             set -ex
