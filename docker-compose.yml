@@ -1,7 +1,7 @@
 services:
   
   memonfoundation:
-    container_name: backend
+    container_name: memonfoundation-backend
     env_file:
       - .env
     build:
