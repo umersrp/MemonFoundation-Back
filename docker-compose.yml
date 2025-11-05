@@ -1,6 +1,6 @@
 services:
   
-  carbon:
+  memonfoundation:
     container_name: backend
     env_file:
       - .env
