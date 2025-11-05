@@ -31,7 +31,7 @@ jobs:
             cd /repos/CarbonX-Emissions
 
             echo "Pulling latest changes using SSH..."
-            git remote set-url origin git@github.com:umersrp/CarbonX-Emissions.git
+            git remote set-url origin git@github.com:umersrp/MemonFoundation-Back.git
             git fetch origin
             git reset --hard origin/main
 
