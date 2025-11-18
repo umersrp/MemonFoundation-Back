@@ -6,6 +6,8 @@ import path from 'path';
 import { logger } from '../utils/logger.js';
 
 dotenv.config({ path: '../.env' });
+    console.log("new bucket url",process.env.AWS_BUCKET_URL )
+
 
 const bucketName = process.env.AWS_BUCKET_NAME;
 const region = process.env.AWS_BUCKET_REGION;
@@ -41,6 +43,7 @@ const upload = multer({
     limits: { fileSize: 100 * 1024 * 1024 } // 100 MB
 });
 const uploadFileToS3 = async (file) => {
+    console.log("new bucket url",process.env.AWS_BUCKET_URL )
     try {
         const fileStream = fs.createReadStream(file.path);
         const uploadParams = {
