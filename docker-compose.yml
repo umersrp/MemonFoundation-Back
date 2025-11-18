@@ -1,7 +1,7 @@
 services:
   
-  carbon:
-    container_name: backend
+  memonfoundation:
+    container_name: memonfoundation-backend
     env_file:
       - .env
     build:
@@ -9,5 +9,5 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - ${PORTAL_PORT}:3000
+      - ${PORTAL_PORT}:3100
 
