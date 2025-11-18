@@ -74,13 +74,14 @@ class UserService {
         selectionNote,
         numberOfHouseholdMembers,
         familyMembers,
+        documents,
         financialInformation,
 
         officeUseInfo,
       } = req.body;
 
-      if (!email || !name) {
-        return { status: 400, message: "Name and Email are required." };
+      if (!email) {
+        return { status: 400, message: "Email is required." };
       }
 
       const existingUser = await User.findOne({ email });
@@ -102,6 +103,7 @@ class UserService {
         password: hashedPassword,
         isActive: false,
         isEmailValid: false,
+        documents,
         createdBy: req.user?._id,
 
         // Add academic & extracurricular

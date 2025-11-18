@@ -21,18 +21,16 @@ const UserSchema = new mongoose.Schema(
     name: {
       type: String,
       trim: true,
-      required: true,
     },
     email: {
       type: String,
       unique: true,
-      required: true,
       trim: true,
     },
     isActive: {
       type: Boolean,
       default: false,
-      
+
     },
     image: {
       type: String,
@@ -64,10 +62,24 @@ const UserSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+
+    documents: {
+      passportPhoto: { type: String, default: "" },
+      last3YearsResults: { type: String, default: "" },
+      achievementCertificates: { type: String, default: "" },
+      fatherCNIC: { type: String, default: "" },
+      fatherJamaatCard: { type: String, default: "" },
+      motherCNIC: { type: String, default: "" },
+      motherJamaatCard: { type: String, default: "" },
+      jamaatNOC: { type: String, default: "" },
+      lastPaidFeeChallan: { type: String, default: "" },
+      lastSalarySlip: { type: String, default: "" },
+      utilityBills: { type: String, default: "" },
+    },
+
     academicRecords: [{
       class: {
         type: String,
-        required: true,
       },
       stream: {
         type: String,
@@ -76,15 +88,12 @@ const UserSchema = new mongoose.Schema(
       },
       schoolName: {
         type: String,
-        required: true,
       },
       yearOfPassing: {
         type: String,
-        required: true,
       },
       gradeOrPercentage: {
         type: String, // Can handle grades like 'A+' or '85%'
-        required: true,
       },
       positionOrRank: {
         type: String,
