@@ -19,6 +19,12 @@ const UserSchema = new mongoose.Schema(
       enum: ["student", "tutor", "superadmin"],
       required: true,
     },
+    applicationStatus: {
+      type: String,
+    },
+    scholarshipCategory: {
+      type: String,
+    },
     name: {
       type: String,
       trim: true,
