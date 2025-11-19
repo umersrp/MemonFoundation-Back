@@ -62,6 +62,8 @@ class UserService {
     try {
       const {
         name,
+        applicationStatus,
+        scholarshipCategory,
         email,
         username,
         phone,
@@ -98,6 +100,8 @@ class UserService {
         name,
         email,
         username,
+        applicationStatus,
+        scholarshipCategory,
         phone,
         type: "student",
         password: hashedPassword,
