@@ -1,3 +1,4 @@
+const { string } = require("joi");
 const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema(
@@ -131,6 +132,8 @@ const UserSchema = new mongoose.Schema(
       designation: { type: String },
       residentialAddress: { type: String },
       mobileNumber: { type: String },
+      qualification: { type: String },
+      salary: { type: String },
       email: { type: String },
     },
 
@@ -146,6 +149,8 @@ const UserSchema = new mongoose.Schema(
       designation: { type: String },
       residentialAddress: { type: String },
       mobileNumber: { type: String },
+       qualification: { type: String },
+      salary: { type: String },
       email: { type: String },
     },
 
