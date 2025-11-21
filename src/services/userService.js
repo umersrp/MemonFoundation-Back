@@ -62,11 +62,29 @@ class UserService {
     try {
       const {
         name,
+        firstName,
+        middleName,
+        lastName,
         applicationStatus,
         scholarshipCategory,
         email,
+        gender,
+        dob,
+        nationality,
         username,
         phone,
+        residentialAddress,
+        appliedOther,
+        appliedDetails,
+        currentSchool,
+        schoolAddress,
+        positionAchieved,
+        gradeClass,
+        monthlyFee,
+        plannedCollege,
+        examinationBoard,
+        declarationParentName,
+        declarationDate,
 
         academicRecords,
         extracurricularActivities,
@@ -98,11 +116,29 @@ class UserService {
 
       const user = await User.create({
         name,
+        firstName,
+        middleName,
+        lastName,
         email,
         username,
+        gender,
+        dob,
+        nationality,
         applicationStatus,
         scholarshipCategory,
         phone,
+        residentialAddress,
+        appliedOther,
+        appliedDetails,
+        currentSchool,
+        schoolAddress,
+        positionAchieved,
+        gradeClass,
+        monthlyFee,
+        plannedCollege,
+        examinationBoard,
+        declarationParentName,
+        declarationDate,
         type: "student",
         password: hashedPassword,
         isActive: false,
@@ -201,7 +237,13 @@ class UserService {
       const { id } = req.params;
       const {
         name,
+        firstName,
+        middleName,
+        lastName,
         email,
+        gender,
+        dob,
+        nationality,
         username,
         password,
         image,
@@ -209,6 +251,25 @@ class UserService {
         selectionNote,
         numberOfHouseholdMembers,
         financialInformation,
+        residentialAddress,
+        appliedOther,
+        appliedDetails,
+        currentSchool,
+        schoolAddress,
+        positionAchieved,
+        gradeClass,
+        monthlyFee,
+        plannedCollege,
+        examinationBoard,
+        declarationParentName,
+        declarationDate,
+        academicRecords,
+        extracurricularActivities,
+        father,
+        mother,
+        familyMembers,
+        documents,
+        officeUseInfo,
       } = req.body;
 
       // 🧩 Find student
@@ -247,11 +308,68 @@ class UserService {
 
       // 🧩 Update other fields
       if (name) student.name = name;
+      if (firstName !== undefined) student.firstName = firstName;
+      if (middleName !== undefined) student.middleName = middleName;
+      if (lastName !== undefined) student.lastName = lastName;
+      if (gender) student.gender = gender;
+      if (dob) student.dob = dob;
+      if (nationality) student.nationality = nationality;
       if (image) student.image = image; // ✅ Image now updates
       if (typeof isActive !== "undefined") student.isActive = isActive;
       if (selectionNote) student.selectionNote = selectionNote;
       if (numberOfHouseholdMembers)
         student.numberOfHouseholdMembers = numberOfHouseholdMembers;
+      if (residentialAddress !== undefined) student.residentialAddress = residentialAddress;
+      if (appliedOther !== undefined) student.appliedOther = appliedOther;
+      if (appliedDetails !== undefined) student.appliedDetails = appliedDetails;
+      if (currentSchool !== undefined) student.currentSchool = currentSchool;
+      if (schoolAddress !== undefined) student.schoolAddress = schoolAddress;
+      if (positionAchieved !== undefined) student.positionAchieved = positionAchieved;
+      if (gradeClass !== undefined) student.gradeClass = gradeClass;
+      if (monthlyFee !== undefined) student.monthlyFee = monthlyFee;
+      if (plannedCollege !== undefined) student.plannedCollege = plannedCollege;
+      if (examinationBoard !== undefined) student.examinationBoard = examinationBoard;
+      if (declarationParentName !== undefined) student.declarationParentName = declarationParentName;
+      if (declarationDate !== undefined) student.declarationDate = declarationDate;
+
+      // 🧩 Handle academic records
+      if (academicRecords) {
+        student.academicRecords = academicRecords;
+      }
+
+      // 🧩 Handle extracurricular activities
+      if (extracurricularActivities) {
+        student.extracurricularActivities = extracurricularActivities;
+      }
+
+      // 🧩 Handle father info
+      if (father) {
+        student.father = {
+          ...student.father,
+          ...father,
+        };
+      }
+
+      // 🧩 Handle mother info
+      if (mother) {
+        student.mother = {
+          ...student.mother,
+          ...mother,
+        };
+      }
+
+      // 🧩 Handle family members
+      if (familyMembers) {
+        student.familyMembers = familyMembers;
+      }
+
+      // 🧩 Handle documents
+      if (documents) {
+        student.documents = {
+          ...student.documents,
+          ...documents,
+        };
+      }
 
       // 🧩 Handle financial info safely
       if (financialInformation) {
@@ -259,6 +377,104 @@ class UserService {
           ...student.financialInformation,
           ...financialInformation,
         };
+      }
+
+      // 🧩 Handle office use info safely
+      if (officeUseInfo) {
+        if (!student.officeUseInfo) {
+          student.officeUseInfo = {};
+        }
+        
+        // Handle nested memfOffice
+        if (officeUseInfo.memfOffice) {
+          if (!student.officeUseInfo.memfOffice) {
+            student.officeUseInfo.memfOffice = {};
+          }
+          
+          // Merge memfOffice fields
+          if (officeUseInfo.memfOffice.studentCode !== undefined) {
+            student.officeUseInfo.memfOffice.studentCode = officeUseInfo.memfOffice.studentCode;
+          }
+          if (officeUseInfo.memfOffice.assessmentDate !== undefined) {
+            student.officeUseInfo.memfOffice.assessmentDate = officeUseInfo.memfOffice.assessmentDate;
+          }
+          if (officeUseInfo.memfOffice.interviewDate !== undefined) {
+            student.officeUseInfo.memfOffice.interviewDate = officeUseInfo.memfOffice.interviewDate;
+          }
+          if (officeUseInfo.memfOffice.memfEvaluationScore !== undefined) {
+            student.officeUseInfo.memfOffice.memfEvaluationScore = officeUseInfo.memfOffice.memfEvaluationScore;
+          }
+          if (officeUseInfo.memfOffice.decision !== undefined) {
+            student.officeUseInfo.memfOffice.decision = officeUseInfo.memfOffice.decision;
+          }
+          if (officeUseInfo.memfOffice.category !== undefined) {
+            student.officeUseInfo.memfOffice.category = officeUseInfo.memfOffice.category;
+          }
+          if (officeUseInfo.memfOffice.panelComments !== undefined) {
+            student.officeUseInfo.memfOffice.panelComments = officeUseInfo.memfOffice.panelComments;
+          }
+          if (officeUseInfo.memfOffice.gradingRubrics !== undefined) {
+            student.officeUseInfo.memfOffice.gradingRubrics = officeUseInfo.memfOffice.gradingRubrics;
+          }
+          
+          // Handle scholarship
+          if (officeUseInfo.memfOffice.scholarship) {
+            if (!student.officeUseInfo.memfOffice.scholarship) {
+              student.officeUseInfo.memfOffice.scholarship = {};
+            }
+            if (officeUseInfo.memfOffice.scholarship.grantedFor !== undefined) {
+              student.officeUseInfo.memfOffice.scholarship.grantedFor = officeUseInfo.memfOffice.scholarship.grantedFor;
+            }
+            if (officeUseInfo.memfOffice.scholarship.totalAmount !== undefined) {
+              student.officeUseInfo.memfOffice.scholarship.totalAmount = officeUseInfo.memfOffice.scholarship.totalAmount;
+            }
+            if (officeUseInfo.memfOffice.scholarship.installments !== undefined) {
+              student.officeUseInfo.memfOffice.scholarship.installments = officeUseInfo.memfOffice.scholarship.installments;
+            }
+          }
+          
+          // Handle reviewPanelSignature
+          if (officeUseInfo.memfOffice.reviewPanelSignature) {
+            if (!student.officeUseInfo.memfOffice.reviewPanelSignature) {
+              student.officeUseInfo.memfOffice.reviewPanelSignature = {};
+            }
+            student.officeUseInfo.memfOffice.reviewPanelSignature = {
+              ...student.officeUseInfo.memfOffice.reviewPanelSignature,
+              ...officeUseInfo.memfOffice.reviewPanelSignature,
+            };
+          }
+        }
+        
+        // Handle other officeUseInfo fields
+        if (officeUseInfo.jamaatName !== undefined) {
+          student.officeUseInfo.jamaatName = officeUseInfo.jamaatName;
+        }
+        if (officeUseInfo.membershipNumber !== undefined) {
+          student.officeUseInfo.membershipNumber = officeUseInfo.membershipNumber;
+        }
+        if (officeUseInfo.belongsToJamaat !== undefined) {
+          student.officeUseInfo.belongsToJamaat = officeUseInfo.belongsToJamaat;
+        }
+        if (officeUseInfo.supportProvided !== undefined) {
+          student.officeUseInfo.supportProvided = officeUseInfo.supportProvided;
+        }
+        if (officeUseInfo.zakatDeserving !== undefined) {
+          student.officeUseInfo.zakatDeserving = officeUseInfo.zakatDeserving;
+        }
+        if (officeUseInfo.channelOfSubmission !== undefined) {
+          student.officeUseInfo.channelOfSubmission = officeUseInfo.channelOfSubmission;
+        }
+        
+        // Handle authorizedSignature if exists
+        if (officeUseInfo.authorizedSignature) {
+          if (!student.officeUseInfo.authorizedSignature) {
+            student.officeUseInfo.authorizedSignature = {};
+          }
+          student.officeUseInfo.authorizedSignature = {
+            ...student.officeUseInfo.authorizedSignature,
+            ...officeUseInfo.authorizedSignature,
+          };
+        }
       }
 
       // 🧩 Handle password hashing
