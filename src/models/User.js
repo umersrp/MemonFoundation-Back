@@ -29,10 +29,79 @@ const UserSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    firstName: {
+      type: String,
+      trim: true,
+    },
+    middleName: {
+      type: String,
+      trim: true,
+    },
+    lastName: {
+      type: String,
+      trim: true,
+    },
     email: {
       type: String,
       unique: true,
       trim: true,
+    },
+    gender: {
+      type: String
+    },
+    dob: {
+      type: Date
+    },
+    nationality: {
+      type: String
+    },
+    residentialAddress: {
+      type: String,
+      trim: true,
+    },
+    appliedOther: {
+      type: String,
+      default: "no",
+    },
+    appliedDetails: {
+      type: String,
+      default: "",
+    },
+    currentSchool: {
+      type: String,
+      trim: true,
+    },
+    schoolAddress: {
+      type: String,
+      trim: true,
+    },
+    positionAchieved: {
+      type: String,
+      trim: true,
+    },
+    gradeClass: {
+      type: String,
+      trim: true,
+    },
+    monthlyFee: {
+      type: String,
+      trim: true,
+    },
+    plannedCollege: {
+      type: String,
+      trim: true,
+    },
+    examinationBoard: {
+      type: String,
+      enum: ["National", "Cambridge", "Other"],
+      default: "National",
+    },
+    declarationParentName: {
+      type: String,
+      trim: true,
+    },
+    declarationDate: {
+      type: Date,
     },
     isActive: {
       type: Boolean,
@@ -105,6 +174,10 @@ const UserSchema = new mongoose.Schema(
       positionOrRank: {
         type: String,
         default: "", // Optional
+      },
+      transcript: {
+        type: String,
+        default: "",
       },
     }],
     extracurricularActivities: [{
@@ -227,6 +300,7 @@ const UserSchema = new mongoose.Schema(
         studentCode: { type: String },
         assessmentDate: { type: Date },
         interviewDate: { type: Date },
+        memfEvaluationScore: { type: String },
         decision: {
           type: String,
           enum: ["Approve", "Hold", "Regret"],
@@ -253,6 +327,14 @@ const UserSchema = new mongoose.Schema(
           ],
         },
         panelComments: { type: String },
+        gradingRubrics: [{
+          academicMerit: { type: Number, default: 0 }, // 30%
+          talentTest: { type: Number, default: 0 }, // 25%
+          personalStatement: { type: Number, default: 0 }, // 10%
+          leadership: { type: Number, default: 0 }, // 15%
+          homeSupport: { type: Number, default: 0 }, // 10%
+          total: { type: Number, default: 0 },
+        }],
         reviewPanelSignature: {
           name: { type: String },
           designation: { type: String },
