@@ -1,6 +1,6 @@
-import { UploadService } from '../services/uploadService.js';
+const { UploadService } = require('../services/uploadService');
 
-export async function uploadFile(req, res) {
+async function uploadFile(req, res) {
     try {
         const result = await UploadService.uploadFile(req);
         return res.status(result.status).send(result);
@@ -8,3 +8,5 @@ export async function uploadFile(req, res) {
         return res.status(500).send({ error: error.message });
     }
 }
+
+module.exports = { uploadFile };
