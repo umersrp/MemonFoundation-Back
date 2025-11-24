@@ -151,6 +151,7 @@ const UserSchema = new mongoose.Schema(
       lastPaidFeeChallan: { type: String, default: "" },
       lastSalarySlip: { type: String, default: "" },
       utilityBills: { type: String, default: "" },
+      bForm: { type: String, default: "" },
     },
 
     academicRecords: [{
