@@ -73,10 +73,16 @@ async function setPasswordAPI(req, res) {
   return res.status(status).send(data);
 }
 
+async function getStudentReportByAdminAPI(req, res) {
+  const { status, ...data } = await userService.getStudentReport(req);
+  return res.status(status).send(data);
+}
+
 
 module.exports = {
   createUserAPI,
   setPasswordAPI,
+  getStudentReportByAdminAPI,
   sendPasswordSetupLinkAPI,
   updateProfileAPI,
   getAllUsersAPI,

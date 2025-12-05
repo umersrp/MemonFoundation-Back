@@ -39,4 +39,7 @@ router.post("/send-password-setup-link", userController.sendPasswordSetupLinkAPI
 
 router.post("/set-password", userController.setPasswordAPI);
 
+
+router.get("/student-report", verifyTokenAndAdmin, userController.getStudentReportByAdminAPI);
+
 module.exports = router;

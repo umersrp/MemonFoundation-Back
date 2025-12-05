@@ -384,13 +384,13 @@ class UserService {
         if (!student.officeUseInfo) {
           student.officeUseInfo = {};
         }
-        
+
         // Handle nested memfOffice
         if (officeUseInfo.memfOffice) {
           if (!student.officeUseInfo.memfOffice) {
             student.officeUseInfo.memfOffice = {};
           }
-          
+
           // Merge memfOffice fields
           if (officeUseInfo.memfOffice.studentCode !== undefined) {
             student.officeUseInfo.memfOffice.studentCode = officeUseInfo.memfOffice.studentCode;
@@ -416,7 +416,7 @@ class UserService {
           if (officeUseInfo.memfOffice.gradingRubrics !== undefined) {
             student.officeUseInfo.memfOffice.gradingRubrics = officeUseInfo.memfOffice.gradingRubrics;
           }
-          
+
           // Handle scholarship
           if (officeUseInfo.memfOffice.scholarship) {
             if (!student.officeUseInfo.memfOffice.scholarship) {
@@ -432,7 +432,7 @@ class UserService {
               student.officeUseInfo.memfOffice.scholarship.installments = officeUseInfo.memfOffice.scholarship.installments;
             }
           }
-          
+
           // Handle reviewPanelSignature
           if (officeUseInfo.memfOffice.reviewPanelSignature) {
             if (!student.officeUseInfo.memfOffice.reviewPanelSignature) {
@@ -444,7 +444,7 @@ class UserService {
             };
           }
         }
-        
+
         // Handle other officeUseInfo fields
         if (officeUseInfo.jamaatName !== undefined) {
           student.officeUseInfo.jamaatName = officeUseInfo.jamaatName;
@@ -464,7 +464,7 @@ class UserService {
         if (officeUseInfo.channelOfSubmission !== undefined) {
           student.officeUseInfo.channelOfSubmission = officeUseInfo.channelOfSubmission;
         }
-        
+
         // Handle authorizedSignature if exists
         if (officeUseInfo.authorizedSignature) {
           if (!student.officeUseInfo.authorizedSignature) {
@@ -777,6 +777,91 @@ class UserService {
       return { status: 500, message: error.message };
     }
   }
+
+
+  static async getStudentReport(req) {
+    try {
+      const { page = 1, limit = 10, search = "" } = req.query;
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const skip = (pageNum - 1) * limitNum;
+
+      // Base filter
+      const filter = { type: "student", isDeleted: false };
+
+      // Add search filter if search string provided
+      if (search) {
+        const regex = new RegExp(search, "i"); // case-insensitive
+        filter.$or = [
+          { name: regex },
+          { firstName: regex },
+          { middleName: regex },
+          { lastName: regex },
+          { email: regex },
+        ];
+      }
+
+      const total = await User.countDocuments(filter);
+
+      const students = await User.find(filter)
+        .select("-password")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean();
+
+      // Attach scholarship and installment info
+      const studentReports = await Promise.all(
+        students.map(async (stu) => {
+          const studentDetail = await User.findById(stu._id).lean();
+
+          const scholarship = studentDetail?.officeUseInfo?.memfOffice?.scholarship || {};
+          const totalAmount = scholarship.totalAmount || 0;
+
+          const installments = (scholarship.installments || []).map((inst) => ({
+            month: inst.month,
+            amount: inst.amount,
+            status: inst.status || "unpaid",
+          }));
+
+          const paidAmount = installments
+            .filter((inst) => inst.status === "paid")
+            .reduce((sum, inst) => sum + inst.amount, 0);
+
+          const remainingAmount = totalAmount - paidAmount;
+
+          return {
+            ...stu,
+            scholarship: {
+              grantedFor: scholarship.grantedFor || null,
+              totalAmount,
+              paidAmount,
+              remainingAmount,
+              monthlyInstallments: installments,
+            },
+          };
+        })
+      );
+
+      return {
+        status: 200,
+        data: {
+          students: studentReports,
+          pagination: {
+            total,
+            page: pageNum,
+            limit: limitNum,
+            pages: Math.ceil(total / limitNum),
+          },
+        },
+      };
+    } catch (error) {
+      console.error("Error generating student report:", error);
+      return { status: 500, message: error.message };
+    }
+  }
+
+
 
 }
 
