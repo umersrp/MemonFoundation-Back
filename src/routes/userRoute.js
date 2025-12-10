@@ -42,4 +42,6 @@ router.post("/set-password", userController.setPasswordAPI);
 
 router.get("/student-report", verifyTokenAndAdmin, userController.getStudentReportByAdminAPI);
 
+router.get("/dashboard-stats", verifyTokenAndAdmin, userController.getDashboardStatsAPI);
+
 module.exports = router;

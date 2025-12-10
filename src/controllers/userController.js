@@ -1,3 +1,4 @@
+const DashboardService = require("../services/dashboard");
 const userService = require("../services/userService");
 
 async function createUserAPI(req, res) {
@@ -78,6 +79,11 @@ async function getStudentReportByAdminAPI(req, res) {
   return res.status(status).send(data);
 }
 
+async function getDashboardStatsAPI(req, res) {
+  const { status, ...data } = await DashboardService.getDashboardStats(req);
+  return res.status(status).send(data);
+}
+
 
 module.exports = {
   createUserAPI,
@@ -96,4 +102,6 @@ module.exports = {
   getAllStudentsAPI,
   studentsUpdateProfileAPI,
   getUserByIdAPI,
+  getDashboardStatsAPI
 };
+
