@@ -6,42 +6,67 @@ class StudentEmailAdminService {
     /**
      * Student sends an email to the admin
      */
+    // static async sendEmailToAdmin(req) {
+    //     try {
+    //         const { _id: studentId, type } = req.user; // assuming JWT middleware sets req.user
+    //         const { subject, message } = req.body;
+
+    //         // Allow only students
+    //         if (type !== "student") {
+    //             return { status: 403, message: "Only students can send emails to admin" };
+    //         }
+
+    //         // Validate fields
+    //         if (!subject || !message) {
+    //             return { status: 400, message: "Subject and message are required" };
+    //         }
+
+    //         const email = new StudentEmailToAdmin({
+    //             studentId,
+    //             subject,
+    //             message,
+    //         });
+
+    //         await email.save();
+
+    //         return {
+    //             status: 200,
+    //             message: "Email sent to admin successfully",
+    //             data: email,
+    //         };
+    //     } catch (error) {
+    //         console.error("Error sending email to admin:", error);
+    //         return {
+    //             status: 500,
+    //             message: "Internal server error",
+    //         };
+    //     }
+    // }
+
     static async sendEmailToAdmin(req) {
         try {
-            const { _id: studentId, type } = req.user; // assuming JWT middleware sets req.user
-            const { subject, message } = req.body;
+            const { studentName, studentEmail, subject, message } = req.body;
 
-            // Allow only students
-            if (type !== "student") {
-                return { status: 403, message: "Only students can send emails to admin" };
-            }
-
-            // Validate fields
-            if (!subject || !message) {
-                return { status: 400, message: "Subject and message are required" };
+            if (!studentName || !studentEmail || !subject || !message) {
+                return { status: 400, message: "Name, email, subject and message are required" };
             }
 
             const email = new StudentEmailToAdmin({
-                studentId,
+                studentName,
+                studentEmail,
                 subject,
                 message,
             });
 
             await email.save();
 
-            return {
-                status: 200,
-                message: "Email sent to admin successfully",
-                data: email,
-            };
+            return { status: 200, message: "Email sent to admin successfully", data: email };
         } catch (error) {
             console.error("Error sending email to admin:", error);
-            return {
-                status: 500,
-                message: "Internal server error",
-            };
+            return { status: 500, message: "Internal server error" };
         }
     }
+
 
     /**
      * Admin gets all student emails

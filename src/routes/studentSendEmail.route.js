@@ -5,7 +5,7 @@ const router = require("express").Router();
 
 
 
-router.post("/send-email",verifyToken, studentEmailAdminController.sendEmailToAdminAPI);
+router.post("/send-email", studentEmailAdminController.sendEmailToAdminAPI);
 
 router.get("/get-all-emails",verifyTokenAndAdmin,studentEmailAdminController.getAllStudentEmailsAPI
 );

@@ -19,6 +19,7 @@ const UserSchema = new mongoose.Schema(
       enum: ["student", "tutor", "superadmin"],
       required: true,
     },
+
     applicationStatus: {
       type: String,
     },
@@ -141,7 +142,7 @@ const UserSchema = new mongoose.Schema(
 
     documents: {
       passportPhoto: { type: String, default: "" },
-      last3YearsResults: { type: String, default: "" },
+      last3YearsResults: { type: [String], default: [] }, // array of strings
       achievementCertificates: { type: String, default: "" },
       fatherCNIC: { type: String, default: "" },
       fatherJamaatCard: { type: String, default: "" },
@@ -151,7 +152,9 @@ const UserSchema = new mongoose.Schema(
       lastPaidFeeChallan: { type: String, default: "" },
       lastSalarySlip: { type: String, default: "" },
       utilityBills: { type: String, default: "" },
-      bForm: { type: String, default: "" },
+      bForm: { type: [String], default: [] }, // array of strings
+      BFormNo: { type: String, default: "" }
+
     },
 
     academicRecords: [{
@@ -229,7 +232,7 @@ const UserSchema = new mongoose.Schema(
       designation: { type: String },
       residentialAddress: { type: String },
       mobileNumber: { type: String },
-       qualification: { type: String },
+      qualification: { type: String },
       salary: { type: String },
       email: { type: String },
     },

@@ -781,85 +781,166 @@ class UserService {
 
   static async getStudentReport(req) {
     try {
-      const { page = 1, limit = 10, search = "" } = req.query;
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
-      const skip = (pageNum - 1) * limitNum;
+        const { 
+            page = 1, 
+            limit = 10, 
+            search = "",
+            jamaat = "",
+            school = "",
+            scholarshipCategory = "" // Add scholarshipCategory parameter
+        } = req.query;
+        
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
 
-      // Base filter
-      const filter = { type: "student", isDeleted: false };
+        // Base filter
+        const filter = { type: "student", isDeleted: false };
 
-      // Add search filter if search string provided
-      if (search) {
-        const regex = new RegExp(search, "i"); // case-insensitive
-        filter.$or = [
-          { name: regex },
-          { firstName: regex },
-          { middleName: regex },
-          { lastName: regex },
-          { email: regex },
-        ];
-      }
+        // Add search filter if search string provided
+        if (search) {
+            const regex = new RegExp(search, "i");
+            filter.$or = [
+                { name: regex },
+                { firstName: regex },
+                { middleName: regex },
+                { lastName: regex },
+                { email: regex },
+                { "father.jamaatName": regex },
+                { currentSchool: regex },
+                { scholarshipCategory: regex } // Add scholarshipCategory to search
+            ];
+        }
 
-      const total = await User.countDocuments(filter);
+        // Add jamaat filter if provided
+        if (jamaat) {
+            if (jamaat.includes(',')) {
+                const jamaatArray = jamaat.split(',').map(j => j.trim());
+                filter["father.jamaatName"] = { $in: jamaatArray };
+            } else {
+                filter["father.jamaatName"] = jamaat;
+            }
+        }
 
-      const students = await User.find(filter)
-        .select("-password")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNum)
-        .lean();
+        // Add school filter if provided
+        if (school) {
+            if (school.includes(',')) {
+                const schoolArray = school.split(',').map(s => s.trim());
+                filter.currentSchool = { $in: schoolArray };
+            } else {
+                filter.currentSchool = school;
+            }
+        }
 
-      // Attach scholarship and installment info
-      const studentReports = await Promise.all(
-        students.map(async (stu) => {
-          const studentDetail = await User.findById(stu._id).lean();
+        // Add scholarshipCategory filter if provided
+        if (scholarshipCategory) {
+            if (scholarshipCategory.includes(',')) {
+                const categoryArray = scholarshipCategory.split(',').map(c => c.trim().toUpperCase());
+                filter.scholarshipCategory = { $in: categoryArray };
+            } else {
+                filter.scholarshipCategory = scholarshipCategory.toUpperCase();
+            }
+        }
 
-          const scholarship = studentDetail?.officeUseInfo?.memfOffice?.scholarship || {};
-          const totalAmount = scholarship.totalAmount || 0;
+        const total = await User.countDocuments(filter);
 
-          const installments = (scholarship.installments || []).map((inst) => ({
-            month: inst.month,
-            amount: inst.amount,
-            status: inst.status || "unpaid",
-          }));
+        const students = await User.find(filter)
+            .select("-password")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
 
-          const paidAmount = installments
-            .filter((inst) => inst.status === "paid")
-            .reduce((sum, inst) => sum + inst.amount, 0);
+        // Attach scholarship and installment info
+        const studentReports = await Promise.all(
+            students.map(async (stu) => {
+                const studentDetail = await User.findById(stu._id).lean();
 
-          const remainingAmount = totalAmount - paidAmount;
+                const scholarship = studentDetail?.officeUseInfo?.memfOffice?.scholarship || {};
+                const totalAmount = scholarship.totalAmount || 0;
 
-          return {
-            ...stu,
-            scholarship: {
-              grantedFor: scholarship.grantedFor || null,
-              totalAmount,
-              paidAmount,
-              remainingAmount,
-              monthlyInstallments: installments,
+                const installments = (scholarship.installments || []).map((inst) => ({
+                    month: inst.month,
+                    amount: inst.amount,
+                    status: inst.status || "unpaid",
+                }));
+
+                const paidAmount = installments
+                    .filter((inst) => inst.status === "paid")
+                    .reduce((sum, inst) => sum + inst.amount, 0);
+
+                const remainingAmount = totalAmount - paidAmount;
+
+                return {
+                    ...stu,
+                    scholarshipCategory: stu.scholarshipCategory || "SEED", // Make sure category is included
+                    scholarship: {
+                        grantedFor: scholarship.grantedFor || null,
+                        totalAmount,
+                        paidAmount,
+                        remainingAmount,
+                        monthlyInstallments: installments,
+                    },
+                };
+            })
+        );
+
+        // Get unique values for filter dropdowns
+        if (pageNum === 1) {
+            const [uniqueJamaats, uniqueSchools, uniqueCategories] = await Promise.all([
+                User.distinct("father.jamaatName", {
+                    type: "student",
+                    isDeleted: false,
+                    "father.jamaatName": { $exists: true, $ne: "" }
+                }),
+                User.distinct("currentSchool", {
+                    type: "student",
+                    isDeleted: false,
+                    currentSchool: { $exists: true, $ne: "" }
+                }),
+                User.distinct("scholarshipCategory", {
+                    type: "student",
+                    isDeleted: false,
+                    scholarshipCategory: { $exists: true, $ne: "" }
+                }).then(cats => cats.filter(c => c).sort()) // Clean and sort
+            ]);
+
+            return {
+                status: 200,
+                data: {
+                    students: studentReports,
+                    pagination: {
+                        total,
+                        page: pageNum,
+                        limit: limitNum,
+                        pages: Math.ceil(total / limitNum),
+                    },
+                    filters: {
+                        jamaats: uniqueJamaats.filter(j => j),
+                        schools: uniqueSchools.filter(s => s),
+                        categories: uniqueCategories
+                    }
+                },
+            };
+        }
+
+        return {
+            status: 200,
+            data: {
+                students: studentReports,
+                pagination: {
+                    total,
+                    page: pageNum,
+                    limit: limitNum,
+                    pages: Math.ceil(total / limitNum),
+                },
             },
-          };
-        })
-      );
-
-      return {
-        status: 200,
-        data: {
-          students: studentReports,
-          pagination: {
-            total,
-            page: pageNum,
-            limit: limitNum,
-            pages: Math.ceil(total / limitNum),
-          },
-        },
-      };
+        };
     } catch (error) {
-      console.error("Error generating student report:", error);
-      return { status: 500, message: error.message };
+        console.error("Error generating student report:", error);
+        return { status: 500, message: error.message };
     }
-  }
+}
 
 
 
