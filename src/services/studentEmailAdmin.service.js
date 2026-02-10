@@ -1,6 +1,10 @@
 // services/studentEmailAdminService.js
 
 const StudentEmailToAdmin = require("../models/SentEmail");
+const EmailService = require("./mailerService");
+const { sendEmail } = require("./mailerService");
+
+
 
 class StudentEmailAdminService {
     /**
@@ -44,28 +48,50 @@ class StudentEmailAdminService {
     // }
 
     static async sendEmailToAdmin(req) {
-        try {
-            const { studentName, studentEmail, subject, message } = req.body;
+    try {
+      const { studentName, studentEmail, subject, message } = req.body;
 
-            if (!studentName || !studentEmail || !subject || !message) {
-                return { status: 400, message: "Name, email, subject and message are required" };
-            }
+      if (!studentName || !studentEmail || !subject || !message) {
+        return { status: 400, message: "Name, email, subject and message are required" };
+      }
 
-            const email = new StudentEmailToAdmin({
-                studentName,
-                studentEmail,
-                subject,
-                message,
-            });
+      // Save email to DB
+      const email = new StudentEmailToAdmin({
+        studentName,
+        studentEmail,
+        subject,
+        message,
+      });
+      await email.save();
 
-            await email.save();
+      // Compose email content (HTML)
+      const htmlContent = `
+        <h3>New message from student</h3>
+        <p><strong>Name:</strong> ${studentName}</p>
+        <p><strong>Email:</strong> ${studentEmail}</p>
+        <p><strong>Subject:</strong> ${subject}</p>
+        <p><strong>Message:</strong> ${message}</p>
+      `;
 
-            return { status: 200, message: "Email sent to admin successfully", data: email };
-        } catch (error) {
-            console.error("Error sending email to admin:", error);
-            return { status: 500, message: "Internal server error" };
-        }
+      // Send email using EmailService
+      const result = await EmailService.sendEmail(
+        process.env.ADMIN_EMAIL, // the actual admin email
+        `Student Message: ${subject}`,
+        htmlContent
+      );
+
+      if (result.status !== 200) {
+        return { status: 500, message: "Failed to send email to admin" };
+      }
+
+      return { status: 200, message: "Email sent to admin successfully", data: email };
+
+    } catch (error) {
+      console.error("Error sending email to admin:", error);
+      return { status: 500, message: "Internal server error" };
     }
+  }
+
 
 
     /**

@@ -166,13 +166,13 @@ class EmailService {
     }
   }
 
-  static async sendEmail(email, subject, body) {
+  static async sendEmail(email, subject, htmlBody) {
     try {
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
         subject,
-        text: body,
+        html: htmlBody, // must be html
       };
 
       const result = await transporter.sendMail(mailOptions);
@@ -183,6 +183,7 @@ class EmailService {
       return { status: 500, message: StaticError.THIRD_PARTY_ERROR };
     }
   }
+
 }
 
 module.exports = EmailService;
