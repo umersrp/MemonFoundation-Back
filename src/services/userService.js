@@ -622,14 +622,27 @@ class UserService {
   }
   static async getStudentsByTenant(req) {
     try {
-      const { page = 1, limit = 10 } = req.query;
+      const { page = 1, limit = 10, search = "" } = req.query;
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
       const skip = (pageNum - 1) * limitNum;
+
       const filter = {
         type: "student",
         isDeleted: false,
       };
+
+      if (search && search.trim() !== "") {
+        const searchRegex = new RegExp(search.trim(), "i");
+        filter.$or = [
+          { firstName: searchRegex },
+          { middleName: searchRegex },
+          { lastName: searchRegex },
+          { email: searchRegex },
+          { name: searchRegex },
+        ];
+      }
+
       const total = await User.countDocuments(filter);
       const students = await User.find(filter)
         .select("-password")
