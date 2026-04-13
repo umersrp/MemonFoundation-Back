@@ -85,10 +85,8 @@ class UserService {
         examinationBoard,
         declarationParentName,
         declarationDate,
-
         academicRecords,
         extracurricularActivities,
-
         father,
         mother,
         selectionNote,
@@ -96,17 +94,41 @@ class UserService {
         familyMembers,
         documents,
         financialInformation,
-
         officeUseInfo,
       } = req.body;
 
+      // Validate email
       if (!email) {
         return { status: 400, message: "Email is required." };
       }
 
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return { status: 400, message: "Invalid email format." };
+      }
+
+      // Validate username
+      if (username && username.length < 3) {
+        return { status: 400, message: "Username must be at least 3 characters." };
+      }
+
+      // Validate phone format
+      if (phone && !/^\d{10,15}$/.test(phone.replace(/\D/g, ""))) {
+        return { status: 400, message: "Invalid phone number format." };
+      }
+
+      // Check if email already exists
       const existingUser = await User.findOne({ email });
       if (existingUser) {
         return { status: 400, message: "Email already registered." };
+      }
+
+      // Check if username already exists
+      if (username) {
+        const existingUsername = await User.findOne({ username });
+        if (existingUsername) {
+          return { status: 400, message: "Username already taken." };
+        }
       }
 
       // Generate dummy password
@@ -145,11 +167,9 @@ class UserService {
         isEmailValid: false,
         documents,
         createdBy: req.user?._id,
-
         // Add academic & extracurricular
         academicRecords,
         extracurricularActivities,
-
         // Family & financial info
         father,
         mother,
