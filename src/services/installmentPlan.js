@@ -80,7 +80,8 @@ class InstallmentPlanService {
       static async getAllStudentsInstallmentPlans() {
         try {
           const students = await Student.find({
-            'officeUseInfo.memfOffice.scholarship.totalAmount': { $exists: true }
+            'officeUseInfo.memfOffice.scholarship.totalAmount': { $exists: true },
+            isDeleted: false
           });
       
           const allPlans = students.map((student) => {
