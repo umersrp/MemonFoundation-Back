@@ -10,11 +10,12 @@ class DashboardService {
       const activeStudents = await User.countDocuments({
         type: "student",
         isActive: true,
+        isDeleted: false,
       });
 
       // Scholarship breakdown
       const scholarshipCounts = await User.aggregate([
-        { $match: { type: "student" } },
+        { $match: { type: "student", isDeleted: false } },
         {
           $group: {
             _id: "$scholarshipCategory",

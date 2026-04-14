@@ -57,6 +57,11 @@ const UserSchema = new mongoose.Schema(
     nationality: {
       type: String
     },
+    studentCode: {
+      type: String,
+      unique: true,
+      sparse: true, // Allows multiple null values
+    },
     residentialAddress: {
       type: String,
       trim: true,
