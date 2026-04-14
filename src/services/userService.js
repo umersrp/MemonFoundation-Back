@@ -262,6 +262,7 @@ class UserService {
         firstName,
         middleName,
         lastName,
+        studentCode,
         email,
         gender,
         dob,
@@ -332,6 +333,7 @@ class UserService {
       if (name) student.name = name;
       if (firstName !== undefined) student.firstName = firstName;
       if (middleName !== undefined) student.middleName = middleName;
+      if (studentCode !== undefined) student.studentCode = studentCode;
       if (lastName !== undefined) student.lastName = lastName;
       if (gender) student.gender = gender;
       if (dob) student.dob = dob;
