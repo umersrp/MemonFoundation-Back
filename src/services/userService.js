@@ -664,6 +664,7 @@ class UserService {
           { lastName: searchRegex },
           { email: searchRegex },
           { name: searchRegex },
+          { studentCode: searchRegex },
         ];
       }
 
