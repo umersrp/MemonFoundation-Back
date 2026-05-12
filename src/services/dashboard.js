@@ -4,7 +4,7 @@ class DashboardService {
   static async getDashboardStats(req) {
     try {
       // Total students
-      const totalStudents = await User.countDocuments({ type: "student" , isDeleted: false });
+      const totalStudents = await User.countDocuments({ type: "student", isDeleted: false });
 
       // Active students
       const activeStudents = await User.countDocuments({
@@ -42,7 +42,8 @@ class DashboardService {
         {
           $match: {
             type: "student",
-            "father.jamaatName": { $exists: true, $ne: "" }
+            "father.jamaatName": { $exists: true, $ne: "" },
+            isDeleted: false
           }
         },
         {
