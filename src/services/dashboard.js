@@ -36,8 +36,6 @@ class DashboardService {
         }
       });
 
-      // 🔥 Top 10 Jamaat by student count
-      // 🔥 Top 10 Jamaat by student count (from father.jamaatName)
       const topJamaats = await User.aggregate([
         {
           $match: {
@@ -48,7 +46,11 @@ class DashboardService {
         },
         {
           $group: {
-            _id: "$father.jamaatName",
+            _id: {
+              $trim: {
+                input: { $toLower: "$father.jamaatName" }
+              }
+            },
             count: { $sum: 1 }
           }
         },
