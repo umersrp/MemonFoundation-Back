@@ -870,7 +870,7 @@ class UserService {
          ------------------------------------------------ */
       if (jamaat) {
         const jamaatArray = jamaat.split(",").map(j => j.trim());
-        filter["father.jamaatName"] =
+        filter["officeUseInfo.jamaatName"] =
           jamaatArray.length > 1
             ? {
               $in: jamaatArray.map(j =>

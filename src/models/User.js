@@ -159,7 +159,8 @@ const UserSchema = new mongoose.Schema(
       lastSalarySlip: { type: String, default: "" },
       utilityBills: { type: String, default: "" },
       bForm: { type: [String], default: [] }, // array of strings
-      BFormNo: { type: String, default: "" }
+      BFormNo: { type: String, default: "" },
+      NocNumber: { type: String, default: "" }
 
     },
 
