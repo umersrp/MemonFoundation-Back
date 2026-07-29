@@ -7,6 +7,7 @@ const documentRoute = require("./routes/documents.Route");
 const documentTypeRoute = require("./routes/documentType.Route");
 const studentSendEmailRoute = require("./routes/studentSendEmail.route");
 const installmentPlanRoute = require("./routes/installmentRoute");
+const schoolRoute = require("./routes/schoolRoute");
 const { logger } = require("./utils/logger");
 const morgan = require("morgan")
 
@@ -30,6 +31,7 @@ app.use("/api/upload", uploadRoute);
 app.use("/api/document-types", documentTypeRoute);
 app.use("/api/documents", documentRoute);
 app.use("/api/student-email", studentSendEmailRoute);
+app.use("/api/schools", schoolRoute);
 
 // index.js or api/index.js
 app.listen(PORTAL_PORT, () => {

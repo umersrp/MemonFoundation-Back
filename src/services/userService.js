@@ -858,6 +858,7 @@ class UserService {
               { lastName: regex },
               { email: regex },
               { "father.jamaatName": regex },
+              { "mother.jamaatName": regex },
               { currentSchool: regex },
               { scholarshipCategory: regex }
             ]
@@ -869,18 +870,27 @@ class UserService {
          JAMAAT FILTER
          ------------------------------------------------ */
       if (jamaat) {
-        const jamaatArray = jamaat.split(",").map(j => j.trim());
-        filter["officeUseInfo.jamaatName"] =
+        const jamaatArray = jamaat.split(",").map((j) => j.trim());
+        const jamaatFilter =
           jamaatArray.length > 1
             ? {
-              $in: jamaatArray.map(j =>
-                new RegExp(j.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
-              )
-            }
+                $in: jamaatArray.map((j) =>
+                  new RegExp(j.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
+                )
+              }
             : new RegExp(
-              jamaatArray[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-              "i"
-            );
+                jamaatArray[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+                "i"
+              );
+
+        filter.$and = filter.$and || [];
+        filter.$and.push({
+          $or: [
+            { "father.jamaatName": jamaatFilter },
+            { "mother.jamaatName": jamaatFilter },
+            { "officeUseInfo.jamaatName": jamaatFilter }
+          ]
+        });
       }
 
       /* ------------------------------------------------
@@ -944,18 +954,30 @@ class UserService {
 
           const totalAmount = scholarship.totalAmount || 0;
 
-          const installments = (scholarship.installments || []).map(inst => ({
+          const installments = (scholarship.installments || []).map((inst) => ({
             month: inst.month,
             amount: inst.amount,
             status: inst.status || "unpaid"
           }));
 
           const paidAmount = installments
-            .filter(inst => inst.status === "paid")
+            .filter((inst) => inst.status === "paid")
             .reduce((sum, inst) => sum + inst.amount, 0);
+
+          const jamaatName =
+            studentDetail?.father?.jamaatName?.trim() ||
+            studentDetail?.mother?.jamaatName?.trim() ||
+            "";
+
+          const jamaatMembershipNo =
+            studentDetail?.father?.jamaatMembershipNo?.trim() ||
+            studentDetail?.mother?.jamaatMembershipNo?.trim() ||
+            "";
 
           return {
             ...stu,
+            jamaatName,
+            jamaatMembershipNo,
             scholarshipCategory: stu.scholarshipCategory || "SEED",
             scholarship: {
               grantedFor: scholarship.grantedFor || null,
@@ -972,7 +994,7 @@ class UserService {
          FILTER DROPDOWNS
          ------------------------------------------------ */
       if (pageNum === 1) {
-        const [uniqueJamaats, uniqueSchools, uniqueCategories] =
+        const [fatherJamaats, motherJamaats, uniqueSchools, uniqueCategories] =
           await Promise.all([
             User.distinct("father.jamaatName", {
               type: "student",
@@ -981,6 +1003,14 @@ class UserService {
                 { isDeleted: { $exists: false } }
               ],
               "father.jamaatName": { $exists: true, $ne: "" }
+            }),
+            User.distinct("mother.jamaatName", {
+              type: "student",
+              $or: [
+                { isDeleted: false },
+                { isDeleted: { $exists: false } }
+              ],
+              "mother.jamaatName": { $exists: true, $ne: "" }
             }),
             User.distinct("currentSchool", {
               type: "student",
@@ -1011,7 +1041,7 @@ class UserService {
               pages: Math.ceil(total / limitNum)
             },
             filters: {
-              jamaats: uniqueJamaats.filter(Boolean).sort(),
+              jamaats: [...new Set([...fatherJamaats, ...motherJamaats].filter(Boolean))].sort(),
               schools: uniqueSchools.filter(Boolean).sort(),
               categories: uniqueCategories.filter(Boolean).sort()
             }
