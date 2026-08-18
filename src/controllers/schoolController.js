@@ -10,6 +10,11 @@ async function getAllSchoolsAPI(req, res) {
   return res.status(status).send(data);
 }
 
+async function getActiveSchoolsForDropdownAPI(req, res) {
+  const { status, ...data } = await SchoolService.getActiveSchoolsForDropdown();
+  return res.status(status).send(data);
+}
+
 async function getSchoolByIdAPI(req, res) {
   const { status, ...data } = await SchoolService.getSchoolById(req);
   return res.status(status).send(data);
@@ -33,6 +38,7 @@ async function deleteSchoolAPI(req, res) {
 module.exports = {
   createSchoolAPI,
   getAllSchoolsAPI,
+  getActiveSchoolsForDropdownAPI,
   getSchoolByIdAPI,
   updateSchoolAPI,
   updateSchoolStatusAPI,

@@ -61,8 +61,43 @@ const verifyTokenAndAdmin = (req, res, next) => {
   }
 };
 
+const verifyTokenAndAdminOrSchool = (req, res, next) => {
+  try {
+    verifyToken(req, res, () => {
+      if (req.user.type === "superadmin" || req.user.type === "school") {
+        next();
+      } else {
+        return res
+          .status(401)
+          .json({ status: 401, message: "You are not authenticated!" });
+      }
+    });
+  } catch (error) {
+    return res.status(401).json({ status: 401, message: error.message });
+  }
+};
+
+const verifyTokenOptional = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return next();
+    const parts = authHeader.split(" ");
+    if (parts.length !== 2 || parts[0] !== "Bearer") return next();
+    try {
+      req.user = jwt.verify(parts[1], process.env.JWT_SECRET);
+    } catch (e) {
+      // ignore invalid token for optional auth
+    }
+    next();
+  } catch (error) {
+    next();
+  }
+};
+
 module.exports = {
   verifyToken,
   verifyTutor,
   verifyTokenAndAdmin,
+  verifyTokenAndAdminOrSchool,
+  verifyTokenOptional,
 };

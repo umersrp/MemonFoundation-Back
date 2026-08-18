@@ -5,13 +5,15 @@ const userController = require("../controllers/userController");
 const {
   verifyToken,
   verifyTokenAndAdmin,
+  verifyTokenAndAdminOrSchool,
   verifyTutor,
+  verifyTokenOptional,
 } = require("../middlewares/verification");
 
 // Only admins can create new users
 router.post("/tutor", verifyTokenAndAdmin, userController.createUserAPI);
 
-router.post("/student", userController.createStudentAPI);
+router.post("/student", verifyTokenOptional, userController.createStudentAPI);
 
 router.put("/update/:id", verifyToken, userController.updateProfileAPI);
 
@@ -21,11 +23,11 @@ router.get("/find", verifyToken, userController.getUserDataAPI);
 
 router.get("/students", verifyTutor, userController.getAllStudentsAPI);
 
-router.get("/getStudentByAdmin", verifyTokenAndAdmin, userController.getstudentByAdmin);
+router.get("/getStudentByAdmin", verifyTokenAndAdminOrSchool, userController.getstudentByAdmin);
 
 router.get("/Get-all", verifyTokenAndAdmin, userController.getAllUsersAPI);
 
-router.put("/student-update/:id", userController.studentsUpdateProfileAPI);
+router.put("/student-update/:id", verifyTokenAndAdminOrSchool, userController.studentsUpdateProfileAPI);
   
 router.get("/user/:id", userController.getUserByIdAPI);
 
@@ -42,6 +44,7 @@ router.post("/set-password", userController.setPasswordAPI);
 
 router.get("/student-report", verifyTokenAndAdmin, userController.getStudentReportByAdminAPI);
 
-router.get("/dashboard-stats", verifyTokenAndAdmin, userController.getDashboardStatsAPI);
+router.get("/dashboard-stats", verifyTokenAndAdminOrSchool, userController.getDashboardStatsAPI);
+
 
 module.exports = router;

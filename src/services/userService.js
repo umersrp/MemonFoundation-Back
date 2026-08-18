@@ -5,6 +5,7 @@ const bcrypt = require("bcrypt");
 const { Types, default: mongoose } = require("mongoose");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const { resolveSchoolId, ensureSchoolStudentsLinked } = require("../utils/schoolStudentLink");
 
 
 
@@ -96,6 +97,7 @@ class UserService {
         documents,
         financialInformation,
         officeUseInfo,
+        schoolId,
       } = req.body;
 
       // Validate email
@@ -137,6 +139,18 @@ class UserService {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(tempPassword, salt);
 
+      const linkedSchool = await resolveSchoolId({ schoolId, currentSchool });
+
+      // School users always link students to their own school
+      if (req.user?.type === "school") {
+        const School = require("../models/School");
+        const school = await School.findById(req.user._id).lean();
+        if (school) {
+          linkedSchool.schoolId = school._id;
+          linkedSchool.currentSchool = school.name;
+        }
+      }
+
       const user = await User.create({
         name,
         firstName,
@@ -154,7 +168,8 @@ class UserService {
         residentialAddress,
         appliedOther,
         appliedDetails,
-        currentSchool,
+        currentSchool: linkedSchool.currentSchool || currentSchool,
+        schoolId: linkedSchool.schoolId,
         schoolAddress,
         positionAchieved,
         gradeClass,
@@ -293,6 +308,7 @@ class UserService {
         familyMembers,
         documents,
         officeUseInfo,
+        schoolId,
       } = req.body;
 
       // 🧩 Find student
@@ -346,7 +362,22 @@ class UserService {
       if (residentialAddress !== undefined) student.residentialAddress = residentialAddress;
       if (appliedOther !== undefined) student.appliedOther = appliedOther;
       if (appliedDetails !== undefined) student.appliedDetails = appliedDetails;
-      if (currentSchool !== undefined) student.currentSchool = currentSchool;
+      if (currentSchool !== undefined || schoolId !== undefined) {
+        // School users cannot reassign student to another school
+        if (req.user?.type === "school") {
+          student.schoolId = req.user._id;
+          const School = require("../models/School");
+          const school = await School.findById(req.user._id).lean();
+          if (school) student.currentSchool = school.name;
+        } else {
+          const linkedSchool = await resolveSchoolId({
+            schoolId: schoolId !== undefined ? schoolId : student.schoolId,
+            currentSchool: currentSchool !== undefined ? currentSchool : student.currentSchool,
+          });
+          student.currentSchool = linkedSchool.currentSchool;
+          student.schoolId = linkedSchool.schoolId;
+        }
+      }
       if (schoolAddress !== undefined) student.schoolAddress = schoolAddress;
       if (positionAchieved !== undefined) student.positionAchieved = positionAchieved;
       if (gradeClass !== undefined) student.gradeClass = gradeClass;
@@ -655,6 +686,12 @@ class UserService {
         type: "student",
         isDeleted: false,
       };
+
+      // If school user, filter by school (also auto-link matching students by name)
+      if (req.user.type === "school") {
+        await ensureSchoolStudentsLinked(req.user._id);
+        filter.schoolId = req.user._id;
+      }
 
       if (search && search.trim() !== "") {
         const searchRegex = new RegExp(search.trim(), "i");

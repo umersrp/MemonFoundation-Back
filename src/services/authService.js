@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const User = require("../models/User");
 const EmailService = require("./mailerService"); // Replaces Twilio
 const { jsonWeb } = require("../helper/jwt-helper");
+const School = require("../models/School");
 
 class AuthService {
   static async register(req) {
@@ -66,11 +67,22 @@ class AuthService {
       if (!email) return { status: 400, message: "Email is required." };
       if (!password) return { status: 400, message: "Password is required." };
 
-      const user = await User.findOne({ email });
+      let user = await User.findOne({ email });
+      let accountType = "user";
+
+      if (!user) {
+        user = await School.findOne({ email, isDeleted: false });
+        accountType = "school";
+      }
 
       if (!user) return { status: 400, message: "Invalid email or password" };
-      if (user.isActive === false)
+
+      if (accountType === "user" && user.isActive === false) {
         return { status: 400, message: "you Are inactive" };
+      }
+      if (accountType === "school" && user.status === false) {
+        return { status: 400, message: "School account is inactive" };
+      }
 
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.password);
@@ -82,15 +94,24 @@ class AuthService {
       const token = jwt.sign(
         {
           _id: user._id,
-          type: user.type, // make sure user has a 'type' field like 'student', 'admin', etc.
+          type: accountType === "school" ? "school" : user.type, 
         },
         secret,
         { expiresIn: "1d" }
-      );      await user.save();
+      );
+
+      if (accountType === "user") {
+        await user.save();
+      }
+
+      const userResponse = user.toObject();
+      if (accountType === "school") {
+        userResponse.type = "school";
+      }
 
       return {
         status: 200,
-        data: { user, token },
+        data: { user: userResponse, token },
         message: "Login successful",
       };
     } catch (error) {

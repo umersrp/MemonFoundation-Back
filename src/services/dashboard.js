@@ -1,21 +1,30 @@
 const User = require("../models/User");
+const { ensureSchoolStudentsLinked } = require("../utils/schoolStudentLink");
 
 class DashboardService {
   static async getDashboardStats(req) {
     try {
+      // Build query based on user type
+      const query = { type: "student", isDeleted: false };
+      
+      // If school user, filter by school
+      if (req.user.type === "school") {
+        await ensureSchoolStudentsLinked(req.user._id);
+        query.schoolId = req.user._id;
+      }
+
       // Total students
-      const totalStudents = await User.countDocuments({ type: "student", isDeleted: false });
+      const totalStudents = await User.countDocuments(query);
 
       // Active students
       const activeStudents = await User.countDocuments({
-        type: "student",
+        ...query,
         isActive: true,
-        isDeleted: false,
       });
 
       // Scholarship breakdown
       const scholarshipCounts = await User.aggregate([
-        { $match: { type: "student", isDeleted: false } },
+        { $match: query },
         {
           $group: {
             _id: "$scholarshipCategory",
@@ -39,9 +48,8 @@ class DashboardService {
       const topJamaats = await User.aggregate([
         {
           $match: {
-            type: "student",
-            "father.jamaatName": { $exists: true, $ne: "" },
-            isDeleted: false
+            ...query,
+            "father.jamaatName": { $exists: true, $ne: "" }
           }
         },
         {

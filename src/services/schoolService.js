@@ -1,5 +1,7 @@
 const bcrypt = require("bcrypt");
 const School = require("../models/School");
+const User = require("../models/User");
+const { linkStudentsToSchool } = require("../utils/schoolStudentLink");
 
 class SchoolService {
   static async createSchool(req) {
@@ -28,7 +30,33 @@ class SchoolService {
         status: status === false || status === "false" ? false : true,
       });
 
-      return { status: 201, data: newSchool };
+      // Link any existing students who already have this school name
+      const { linked } = await linkStudentsToSchool(newSchool);
+
+      return {
+        status: 201,
+        data: newSchool,
+        message: linked
+          ? `School created successfully. ${linked} existing student(s) linked.`
+          : "School created successfully.",
+      };
+    } catch (error) {
+      return { status: 500, message: error.message };
+    }
+  }
+
+  /** Public/auth list of active schools for student registration dropdown */
+  static async getActiveSchoolsForDropdown() {
+    try {
+      const schools = await School.find({
+        isDeleted: false,
+        status: true,
+      })
+        .select("_id name")
+        .sort({ name: 1 })
+        .lean();
+
+      return { status: 200, data: schools };
     } catch (error) {
       return { status: 500, message: error.message };
     }
@@ -118,6 +146,16 @@ class SchoolService {
       if (!school) {
         return { status: 404, message: "School not found" };
       }
+
+      // Keep linked students' currentSchool name in sync
+      if (updateData.name) {
+        await User.updateMany(
+          { type: "student", schoolId: school._id, isDeleted: false },
+          { $set: { currentSchool: school.name } }
+        );
+        await linkStudentsToSchool(school);
+      }
+
       return { status: 200, data: school };
     } catch (error) {
       return { status: 500, message: error.message };

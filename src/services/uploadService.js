@@ -8,7 +8,10 @@ class UploadService {
             const uploadResult = await fileUpload(req);
 
             if (uploadResult.status !== 200) {
-                return { status: 400, message: 'File upload failed' };
+                return {
+                    status: uploadResult.status || 400,
+                    message: uploadResult.message || 'File upload failed',
+                };
             }
 
             let filePath, fileUrl;

@@ -78,6 +78,11 @@ const UserSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      default: null,
+    },
     schoolAddress: {
       type: String,
       trim: true,
