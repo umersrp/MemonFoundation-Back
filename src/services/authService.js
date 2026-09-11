@@ -2,7 +2,7 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const User = require("../models/User");
-const EmailService = require("./mailerService"); // Replaces Twilio
+const EmailService = require("./mailerService");
 const { jsonWeb } = require("../helper/jwt-helper");
 const School = require("../models/School");
 
@@ -33,12 +33,11 @@ class AuthService {
           password: hashedPassword,
         });
         return { status: 200, message: "Account reactivated. Please login." };
-      }
+      } 
 
-      // Hash password before creating new user
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
-
+  
       let user = await User.create({
         email,
         password: hashedPassword,
