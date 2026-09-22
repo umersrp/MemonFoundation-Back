@@ -102,14 +102,6 @@ class StudentAcademicDocumentService {
       const access = await assertStudentAccess(req, studentId);
       if (access.error) return access.error;
 
-      // School users cannot upload Payment Acknowledgement
-      if (req.user.type === "school" && category === PAYMENT_ACK) {
-        return {
-          status: 403,
-          message: "School users cannot upload or modify Payment Acknowledgement",
-        };
-      }
-
       if (category === "Quarterly Fee Voucher") {
         if (!academicYear || !termOrQuarter) {
           return {
@@ -123,6 +115,10 @@ class StudentAcademicDocumentService {
       const schoolId =
         access.student.schoolId ||
         (req.user.type === "school" ? req.user._id : uploader.schoolId);
+      const documentStatus =
+        req.user.type === "school" && category === PAYMENT_ACK
+          ? "Under Review"
+          : status || "Submitted";
 
       const doc = await StudentAcademicDocument.create({
         studentId,
@@ -132,7 +128,7 @@ class StudentAcademicDocumentService {
         fileUrl,
         academicYear: academicYear || "",
         termOrQuarter: termOrQuarter || "",
-        status: status || (category === "Quarterly Fee Voucher" ? "Submitted" : "Submitted"),
+        status: documentStatus,
         paymentDate: paymentDate || null,
         paymentReference: paymentReference || "",
         amountPaid: amountPaid != null && amountPaid !== "" ? Number(amountPaid) : null,
