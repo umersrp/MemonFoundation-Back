@@ -1,6 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const multer = require('multer');
 const path = require('path');
 const { logger } = require('../utils/logger');
@@ -128,4 +129,16 @@ const uploadFileToS3Path = async (filePath) => {
     }
 };
 
-module.exports = { fileUpload, uploadFileToS3Path };
+const getS3SignedUrl = async (fileUrl, download = false) => {
+    const parsedUrl = new URL(fileUrl);
+    const key = decodeURIComponent(parsedUrl.pathname.replace(/^\/+/, ''));
+    const command = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        ...(download ? { ResponseContentDisposition: 'attachment' } : {}),
+    });
+
+    return getSignedUrl(s3, command, { expiresIn: 900 });
+};
+
+module.exports = { fileUpload, uploadFileToS3Path, getS3SignedUrl };
