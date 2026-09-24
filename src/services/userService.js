@@ -59,12 +59,11 @@ class UserService {
 
         const sourceEmail = valueOf(row, "email", "student email").toLowerCase();
         const studentCode = valueOf(row, "i.d", "id", "student code");
-        const email = sourceEmail || `import-${Date.now()}-${rowIndex}@student.local`;
         if (sourceEmail && (seenEmails.has(sourceEmail) || await User.exists({ email: sourceEmail }))) {
           skipped.push({ row: rowIndex + 1, name, email: sourceEmail, reason: "Duplicate email" });
           continue;
         }
-        seenEmails.add(email);
+        if (sourceEmail) seenEmails.add(sourceEmail);
 
         const { firstName, lastName } = splitName(name);
         const currentSchool = valueOf(row, "school name", "school");
@@ -83,7 +82,7 @@ class UserService {
           name,
           firstName,
           lastName,
-          email,
+          ...(sourceEmail ? { email: sourceEmail } : {}),
           studentCode: studentCode || undefined,
           gender: valueOf(row, "gender"),
           phone: cleanNumber(valueOf(row, "contact", "phone")),
@@ -120,7 +119,7 @@ class UserService {
             },
           },
         });
-        imported.push({ id: user._id, name, email });
+        imported.push({ id: user._id, name, email: user.email || "" });
       }
 
       return {
