@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const userController = require("../controllers/userController");
+const multer = require("multer");
 // const { validateRegistration,
 //     validateLogin, } = require('../DTO/userDTO');
 const {
@@ -10,10 +11,13 @@ const {
   verifyTokenOptional,
 } = require("../middlewares/verification");
 
+const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
 // Only admins can create new users
 router.post("/tutor", verifyTokenAndAdmin, userController.createUserAPI);
 
 router.post("/student", verifyTokenOptional, userController.createStudentAPI);
+router.post("/students/import", verifyTokenAndAdminOrSchool, csvUpload.single("file"), userController.importStudentsAPI);
 
 router.put("/update/:id", verifyToken, userController.updateProfileAPI);
 

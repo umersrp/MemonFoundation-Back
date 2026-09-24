@@ -11,6 +11,11 @@ async function createStudentAPI(req, res) {
   return res.status(status).send(data);
 }
 
+async function importStudentsAPI(req, res) {
+  const { status, ...data } = await userService.importStudents(req);
+  return res.status(status).send(data);
+}
+
 async function updateProfileAPI(req, res) {
   const { status, ...data } = await userService.updateProfile(req);
   return res.status(status).send(data);
@@ -98,6 +103,7 @@ module.exports = {
   getstudentByAdmin,
   removeByAdminAPI,
   createStudentAPI,
+  importStudentsAPI,
   updateByAdminAPI,
   getAllStudentsAPI,
   studentsUpdateProfileAPI,

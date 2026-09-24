@@ -6,10 +6,133 @@ const { Types, default: mongoose } = require("mongoose");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { resolveSchoolId, ensureSchoolStudentsLinked } = require("../utils/schoolStudentLink");
+const { parse } = require("csv-parse/sync");
 
 
 
 class UserService {
+  static async importStudents(req) {
+    try {
+      const file = req.file;
+      if (!file || !file.buffer) {
+        return { status: 400, message: "CSV file is required." };
+      }
+
+      const rows = parse(file.buffer.toString("utf8"), {
+        bom: true,
+        skip_empty_lines: true,
+        relax_column_count: true,
+      });
+      const headerIndex = rows.findIndex((row) =>
+        row.some((value) => String(value || "").trim().toLowerCase() === "student name")
+      );
+
+      if (headerIndex < 0) {
+        return { status: 400, message: "CSV header must contain Student Name." };
+      }
+
+      const headers = rows[headerIndex].map((value) => String(value || "").trim().toLowerCase());
+      const valueOf = (row, ...names) => {
+        const index = names.map((name) => headers.indexOf(name.toLowerCase())).find((value) => value >= 0);
+        return index === undefined ? "" : String(row[index] || "").trim();
+      };
+      const cleanNumber = (value) => String(value || "").replace(/[^0-9.]/g, "");
+      const splitName = (name) => {
+        const parts = name.trim().split(/\s+/).filter(Boolean);
+        return { firstName: parts.shift() || name.trim(), lastName: parts.join(" ") };
+      };
+      const normalizeDecision = (value) => {
+        const decision = value.trim().toLowerCase();
+        if (decision === "a" || decision === "approve" || decision === "approved") return "Approve";
+        if (decision === "r" || decision === "regret" || decision === "rejected") return "Regret";
+        return "Hold";
+      };
+
+      const imported = [];
+      const skipped = [];
+      const seenEmails = new Set();
+
+      for (let rowIndex = headerIndex + 1; rowIndex < rows.length; rowIndex += 1) {
+        const row = rows[rowIndex];
+        const name = valueOf(row, "student name", "name");
+        if (!name) continue;
+
+        const sourceEmail = valueOf(row, "email", "student email").toLowerCase();
+        const studentCode = valueOf(row, "i.d", "id", "student code");
+        const email = sourceEmail || `import-${Date.now()}-${rowIndex}@student.local`;
+        if (sourceEmail && (seenEmails.has(sourceEmail) || await User.exists({ email: sourceEmail }))) {
+          skipped.push({ row: rowIndex + 1, name, email: sourceEmail, reason: "Duplicate email" });
+          continue;
+        }
+        seenEmails.add(email);
+
+        const { firstName, lastName } = splitName(name);
+        const currentSchool = valueOf(row, "school name", "school");
+        const linkedSchool = await resolveSchoolId({ schoolId: req.body.schoolId, currentSchool });
+        if (req.user?.type === "school") {
+          const School = require("../models/School");
+          const school = await School.findById(req.user._id).lean();
+          if (school) {
+            linkedSchool.schoolId = school._id;
+            linkedSchool.currentSchool = school.name;
+          }
+        }
+
+        const monthlyFee = cleanNumber(valueOf(row, "monthly fee"));
+        const user = await User.create({
+          name,
+          firstName,
+          lastName,
+          email,
+          studentCode: studentCode || undefined,
+          gender: valueOf(row, "gender"),
+          phone: cleanNumber(valueOf(row, "contact", "phone")),
+          currentSchool: linkedSchool.currentSchool || currentSchool,
+          schoolId: linkedSchool.schoolId,
+          gradeClass: valueOf(row, "grade", "class"),
+          monthlyFee,
+          scholarshipCategory: valueOf(row, "category"),
+          applicationStatus: valueOf(row, "status"),
+          type: "student",
+          password: await bcrypt.hash(crypto.randomBytes(10).toString("hex"), 10),
+          isActive: false,
+          isEmailValid: false,
+          createdBy: req.user?._id,
+          father: {
+            firstName: valueOf(row, "father name"),
+            cnicNo: valueOf(row, "father nic"),
+            jamaatMembershipNo: valueOf(row, "father jamaat id"),
+            jamaatName: valueOf(row, "jamaat"),
+          },
+          officeUseInfo: {
+            jamaatName: valueOf(row, "jamaat"),
+            membershipNumber: valueOf(row, "father jamaat id"),
+            memfOffice: {
+              studentCode,
+              decision: normalizeDecision(valueOf(row, "decision")),
+              category: ["STAR", "HOPE", "SEED"].includes(valueOf(row, "category").toUpperCase())
+                ? valueOf(row, "category").toUpperCase()
+                : "SEED",
+              scholarship: {
+                grantedFor: monthlyFee ? ["Monthly Fee"] : [],
+                totalAmount: monthlyFee ? Number(monthlyFee) : 0,
+              },
+            },
+          },
+        });
+        imported.push({ id: user._id, name, email });
+      }
+
+      return {
+        status: 201,
+        message: `${imported.length} students imported successfully. ${skipped.length} duplicates skipped.`,
+        data: { imported, skipped },
+      };
+    } catch (error) {
+      return { status: 500, message: error.message };
+    }
+  }
+
   // static async createTutor(req) {
   //   try {
   //     const { userId } = req.user;
