@@ -13,6 +13,7 @@ const bucketName = process.env.AWS_BUCKET_NAME;
 const region = process.env.AWS_BUCKET_REGION;
 const accessKeyId = process.env.AWS_ACCESS_KEY;
 const secretAccessKey = process.env.AWS_SECRET_KEY;
+const bucketFolder = process.env.AWS_BUCKET_FOLDER || '';
 
 if (!accessKeyId) {
     throw new Error('AWS access key is not defined');
@@ -38,26 +39,24 @@ const upload = multer({
 });
 
 const uploadFileToS3 = async (file) => {
-    console.log("new bucket url", process.env.AWS_BUCKET_URL)
     try {
-        // Generate unique filename with timestamp to avoid conflicts
         const timestamp = Date.now();
         const sanitizedFilename = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const uniqueFilename = `${timestamp}-${sanitizedFilename}`;
+        const uniqueFilename = `${bucketFolder}${timestamp}-${sanitizedFilename}`;
 
         const uploadParams = {
             Bucket: bucketName,
-            Body: file.buffer, // Use buffer from memory storage instead of file stream
+            Body: file.buffer,
             Key: uniqueFilename,
             ContentType: file.mimetype,
         };
 
         await s3.send(new PutObjectCommand(uploadParams));
 
-        return { 
-            message: 'File uploaded successfully', 
+        return {
+            message: 'File uploaded successfully',
             Key: uniqueFilename,
-            ...uploadParams 
+            ...uploadParams
         };
     } catch (error) {
         console.error('S3 Upload Error:', error);
@@ -68,7 +67,7 @@ const uploadFileToS3 = async (file) => {
 const fileUpload = async (req) => {
     try {
         // Use multer.any() to accept files from any field name
-        const uploadAny = multer({ 
+        const uploadAny = multer({
             storage: multer.memoryStorage(),
             limits: { fileSize: 100 * 1024 * 1024 } // 100 MB
         }).any();
@@ -86,7 +85,7 @@ const fileUpload = async (req) => {
 
         // Get the first file from req.files (multer.any() puts files in req.files array)
         const uploadedFile = req?.files?.[0] || req?.file;
-        
+
         if (!uploadedFile) {
             return { status: 400, message: 'No file uploaded. Please ensure file is sent with form data.' };
         }
@@ -110,7 +109,7 @@ const uploadFileToS3Path = async (filePath) => {
         const uploadParams = {
             Bucket: bucketName,
             Body: file,
-            Key: `AI-${path.basename(filePath)}`,
+            Key: `${bucketFolder}/${path.basename(filePath)}`,
         };
 
         await s3.send(new PutObjectCommand(uploadParams));
