@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { resolveSchoolId, ensureSchoolStudentsLinked } = require("../utils/schoolStudentLink");
 const { parse } = require("csv-parse/sync");
+const XLSX = require("xlsx");
 
 
 
@@ -18,11 +19,15 @@ class UserService {
         return { status: 400, message: "CSV file is required." };
       }
 
-      const rows = parse(file.buffer.toString("utf8"), {
-        bom: true,
-        skip_empty_lines: true,
-        relax_column_count: true,
-      });
+      const isExcelFile = /\.xlsx?$/i.test(file.originalname || "");
+      const workbook = isExcelFile ? XLSX.read(file.buffer, { type: "buffer" }) : null;
+      const rows = isExcelFile
+        ? XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: "" })
+        : parse(file.buffer.toString("utf8"), {
+            bom: true,
+            skip_empty_lines: true,
+            relax_column_count: true,
+          });
       const headerIndex = rows.findIndex((row) =>
         row.some((value) => String(value || "").trim().toLowerCase() === "student name")
       );
@@ -47,6 +52,24 @@ class UserService {
         if (decision === "r" || decision === "regret" || decision === "rejected") return "Regret";
         return "Hold";
       };
+      const requiredImportFields = [
+        ["firstName", "First Name"],
+        ["lastName", "Last Name"],
+        ["email", "Email"],
+        ["gender", "Gender"],
+        ["scholarshipCategory", "Scholarship Category"],
+        ["applicationStatus", "Application Status"],
+        ["currentSchool", "Current School"],
+        ["gradeClass", "Grade/Class"],
+        ["residentialAddress", "Residential Address"],
+        ["BFormNo", "B-Form Number"],
+        ["academicClass", "Academic Record Class"],
+        ["academicSchool", "Academic Record School Name"],
+        ["academicYear", "Academic Record Year of Passing"],
+        ["academicGrade", "Academic Record Grade/Percentage"],
+        ["fatherFirstName", "Father First Name"],
+        ["motherFirstName", "Mother First Name"],
+      ];
 
       const imported = [];
       const skipped = [];
@@ -59,13 +82,50 @@ class UserService {
 
         const sourceEmail = valueOf(row, "email", "student email").toLowerCase();
         const studentCode = valueOf(row, "i.d", "id", "student code");
+        const nameParts = splitName(name);
+        const academicClass = valueOf(row, "academic class", "previous class", "class");
+        const academicSchool = valueOf(row, "academic school", "previous school");
+        const academicYear = valueOf(row, "year of passing", "academic year");
+        const academicGrade = valueOf(row, "grade/percentage", "percentage", "academic grade");
+        const missingFields = requiredImportFields
+          .filter(([field]) => {
+            const values = {
+              firstName: nameParts.firstName,
+              lastName: nameParts.lastName,
+              email: sourceEmail,
+              gender: valueOf(row, "gender"),
+              scholarshipCategory: valueOf(row, "category", "scholarship category"),
+              applicationStatus: valueOf(row, "status", "application status"),
+              currentSchool: valueOf(row, "school name", "current school", "school"),
+              gradeClass: valueOf(row, "grade", "grade/class", "class"),
+              residentialAddress: valueOf(row, "residential address", "address"),
+              BFormNo: valueOf(row, "b.form", "b-form", "bform", "b-form no"),
+              academicClass,
+              academicSchool,
+              academicYear,
+              academicGrade,
+              fatherFirstName: valueOf(row, "father first name", "father name"),
+              motherFirstName: valueOf(row, "mother first name", "mother name"),
+            };
+            return !values[field];
+          })
+          .map(([, label]) => label);
+        if (missingFields.length) {
+          skipped.push({
+            row: rowIndex + 1,
+            name,
+            email: sourceEmail,
+            reason: `Missing mandatory fields: ${missingFields.join(", ")}`,
+          });
+          continue;
+        }
         if (sourceEmail && (seenEmails.has(sourceEmail) || await User.exists({ email: sourceEmail }))) {
           skipped.push({ row: rowIndex + 1, name, email: sourceEmail, reason: "Duplicate email" });
           continue;
         }
         if (sourceEmail) seenEmails.add(sourceEmail);
 
-        const { firstName, lastName } = splitName(name);
+        const { firstName, lastName } = nameParts;
         const currentSchool = valueOf(row, "school name", "school");
         const linkedSchool = await resolveSchoolId({ schoolId: req.body.schoolId, currentSchool });
         if (req.user?.type === "school") {
@@ -89,6 +149,7 @@ class UserService {
           currentSchool: linkedSchool.currentSchool || currentSchool,
           schoolId: linkedSchool.schoolId,
           gradeClass: valueOf(row, "grade", "class"),
+          residentialAddress: valueOf(row, "residential address", "address"),
           monthlyFee,
           scholarshipCategory: valueOf(row, "category"),
           applicationStatus: valueOf(row, "status"),
@@ -98,11 +159,23 @@ class UserService {
           isEmailValid: false,
           createdBy: req.user?._id,
           father: {
-            firstName: valueOf(row, "father name"),
+            firstName: valueOf(row, "father first name", "father name"),
             cnicNo: valueOf(row, "father nic"),
             jamaatMembershipNo: valueOf(row, "father jamaat id"),
             jamaatName: valueOf(row, "jamaat"),
           },
+          mother: {
+            firstName: valueOf(row, "mother first name", "mother name"),
+          },
+          documents: {
+            BFormNo: valueOf(row, "b.form", "b-form", "bform", "b-form no"),
+          },
+          academicRecords: [{
+            class: academicClass,
+            schoolName: academicSchool,
+            yearOfPassing: academicYear,
+            gradeOrPercentage: academicGrade,
+          }],
           officeUseInfo: {
             jamaatName: valueOf(row, "jamaat"),
             membershipNumber: valueOf(row, "father jamaat id"),
@@ -124,7 +197,7 @@ class UserService {
 
       return {
         status: 201,
-        message: `${imported.length} students imported successfully. ${skipped.length} duplicates skipped.`,
+        message: `${imported.length} students imported successfully. ${skipped.length} rows skipped.`,
         data: { imported, skipped },
       };
     } catch (error) {
