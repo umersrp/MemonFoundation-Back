@@ -30,12 +30,11 @@ const s3 = new S3Client({
     },
 });
 
-// Use memory storage instead of disk storage to avoid local filesystem issues
 const storage = multer.memoryStorage();
 
 const upload = multer({
     storage,
-    limits: { fileSize: 100 * 1024 * 1024 } // 100 MB
+    limits: { fileSize: 100 * 1024 * 1024 } 
 });
 
 const uploadFileToS3 = async (file) => {
@@ -83,7 +82,6 @@ const fileUpload = async (req) => {
             return uploadResult;
         }
 
-        // Get the first file from req.files (multer.any() puts files in req.files array)
         const uploadedFile = req?.files?.[0] || req?.file;
 
         if (!uploadedFile) {
@@ -136,7 +134,6 @@ const getS3SignedUrl = async (fileUrl, download = false) => {
         Key: key,
         ...(download ? { ResponseContentDisposition: 'attachment' } : {}),
     });
-
     return getSignedUrl(s3, command, { expiresIn: 900 });
 };
 

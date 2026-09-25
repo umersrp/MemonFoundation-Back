@@ -55,7 +55,6 @@ class UserService {
       const requiredImportFields = [
         ["firstName", "First Name"],
         ["lastName", "Last Name"],
-        ["email", "Email"],
         ["gender", "Gender"],
         ["scholarshipCategory", "Scholarship Category"],
         ["applicationStatus", "Application Status"],
@@ -119,8 +118,21 @@ class UserService {
           });
           continue;
         }
-        if (sourceEmail && (seenEmails.has(sourceEmail) || await User.exists({ email: sourceEmail }))) {
+        const existingUser = sourceEmail
+          ? await User.findOne({ email: sourceEmail }).select("_id type isDeleted")
+          : studentCode
+            ? await User.findOne({ type: "student", studentCode }).select("_id type isDeleted")
+            : await User.findOne({ type: "student", name }).select("_id type isDeleted");
+        if (sourceEmail && seenEmails.has(sourceEmail)) {
           skipped.push({ row: rowIndex + 1, name, email: sourceEmail, reason: "Duplicate email" });
+          continue;
+        }
+        if (existingUser && existingUser.type !== "student") {
+          skipped.push({ row: rowIndex + 1, name, email: sourceEmail, reason: "Existing identifier belongs to another user" });
+          continue;
+        }
+        if (existingUser && !existingUser.isDeleted) {
+          skipped.push({ row: rowIndex + 1, name, email: sourceEmail, reason: sourceEmail ? "Duplicate email" : "Duplicate student" });
           continue;
         }
         if (sourceEmail) seenEmails.add(sourceEmail);
@@ -138,6 +150,13 @@ class UserService {
         }
 
         const monthlyFee = cleanNumber(valueOf(row, "monthly fee"));
+        if (existingUser?.isDeleted) {
+          existingUser.isDeleted = false;
+          existingUser.updatedBy = req.user?._id;
+          await existingUser.save();
+          imported.push({ id: existingUser._id, name, email: sourceEmail, restored: true });
+          continue;
+        }
         const user = await User.create({
           name,
           firstName,
