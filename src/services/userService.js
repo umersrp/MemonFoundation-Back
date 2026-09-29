@@ -47,10 +47,7 @@ class UserService {
         return { firstName: parts.shift() || name.trim(), lastName: parts.join(" ") };
       };
       const normalizeDecision = (value) => {
-        const decision = value.trim().toLowerCase();
-        if (decision === "a" || decision === "approve" || decision === "approved") return "Approve";
-        if (decision === "r" || decision === "regret" || decision === "rejected") return "Regret";
-        return "Hold";
+        return value.trim();
       };
       const requiredImportFields = [
         ["firstName", "First Name"],

@@ -317,11 +317,7 @@ const UserSchema = new mongoose.Schema(
         assessmentDate: { type: Date },
         interviewDate: { type: Date },
         memfEvaluationScore: { type: String },
-        decision: {
-          type: String,
-          enum: ["Approve", "Hold", "Regret"],
-          default: "Hold",
-        },
+        decision: { type: String, default: "" },
         category: {
           type: String,
           enum: ["STAR", "HOPE", "SEED"],
