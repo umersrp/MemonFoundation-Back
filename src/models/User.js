@@ -45,8 +45,15 @@ const UserSchema = new mongoose.Schema(
     email: {
       type: String,
       unique: true,
+      sparse: true,
       trim: true,
       lowercase: true,
+      default: null,
+      set: (value) => {
+        if (value === undefined || value === null) return undefined;
+        const cleaned = String(value).trim();
+        return cleaned ? cleaned.toLowerCase() : undefined;
+      },
     },
     gender: {
       type: String
