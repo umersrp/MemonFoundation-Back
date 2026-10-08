@@ -51,7 +51,6 @@ class UserService {
       };
       const requiredImportFields = [
         ["firstName", "First Name"],
-        ["lastName", "Last Name"],
         ["gender", "Gender"],
         ["scholarshipCategory", "Scholarship Category"],
         ["applicationStatus", "Application Status"],
@@ -59,10 +58,6 @@ class UserService {
         ["gradeClass", "Grade/Class"],
         ["residentialAddress", "Residential Address"],
         ["BFormNo", "B-Form Number"],
-        ["academicClass", "Academic Record Class"],
-        ["academicSchool", "Academic Record School Name"],
-        ["academicYear", "Academic Record Year of Passing"],
-        ["academicGrade", "Academic Record Grade/Percentage"],
         ["fatherFirstName", "Father First Name"],
         ["motherFirstName", "Mother First Name"],
       ];
@@ -187,11 +182,11 @@ class UserService {
             BFormNo: valueOf(row, "b.form", "b-form", "bform", "b-form no"),
           },
           academicRecords: [{
-            class: academicClass,
-            schoolName: academicSchool,
-            yearOfPassing: academicYear,
-            gradeOrPercentage: academicGrade,
-          }],
+            ...(academicClass ? { class: academicClass } : {}),
+            ...(academicSchool ? { schoolName: academicSchool } : {}),
+            ...(academicYear ? { yearOfPassing: academicYear } : {}),
+            ...(academicGrade ? { gradeOrPercentage: academicGrade } : {}),
+          }].filter((record) => Object.keys(record).length > 0),
           officeUseInfo: {
             jamaatName: valueOf(row, "jamaat"),
             membershipNumber: valueOf(row, "father jamaat id"),

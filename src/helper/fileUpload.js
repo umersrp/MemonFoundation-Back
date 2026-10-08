@@ -15,8 +15,7 @@ const accessKeyId = process.env.AWS_ACCESS_KEY;
 const secretAccessKey = process.env.AWS_SECRET_KEY;
 const bucketFolder = process.env.AWS_BUCKET_FOLDER || '';
 
-if (!accessKeyId) {
-    
+if (!accessKeyId) { 
     throw new Error('AWS access key is not defined');
 }
 if (!secretAccessKey) {
