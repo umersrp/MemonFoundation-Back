@@ -1023,6 +1023,7 @@ class UserService {
           { email: searchRegex },
           { name: searchRegex },
           { studentCode: searchRegex },
+          { "documents.BFormNo": searchRegex },
         ];
       }
 
