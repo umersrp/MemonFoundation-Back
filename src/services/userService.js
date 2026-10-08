@@ -63,6 +63,7 @@ class UserService {
       ];
 
       const imported = [];
+      const updatedExisting = [];
       const skipped = [];
       const seenEmails = new Set();
 
@@ -73,6 +74,7 @@ class UserService {
 
         const sourceEmail = valueOf(row, "email", "student email").toLowerCase();
         const studentCode = valueOf(row, "i.d", "id", "student code");
+        const sourceDecision = normalizeDecision(valueOf(row, "decision"));
         const nameParts = splitName(name);
         const academicClass = valueOf(row, "academic class", "previous class", "class");
         const academicSchool = valueOf(row, "academic school", "previous school");
@@ -111,10 +113,10 @@ class UserService {
           continue;
         }
         const existingUser = sourceEmail
-          ? await User.findOne({ email: sourceEmail }).select("_id type isDeleted")
+          ? await User.findOne({ email: sourceEmail }).select("_id type isDeleted officeUseInfo.memfOffice.decision")
           : studentCode
-            ? await User.findOne({ type: "student", studentCode }).select("_id type isDeleted")
-            : await User.findOne({ type: "student", name }).select("_id type isDeleted");
+            ? await User.findOne({ type: "student", studentCode }).select("_id type isDeleted officeUseInfo.memfOffice.decision")
+            : await User.findOne({ type: "student", name }).select("_id type isDeleted officeUseInfo.memfOffice.decision");
         if (sourceEmail && seenEmails.has(sourceEmail)) {
           skipped.push({ row: rowIndex + 1, name, email: sourceEmail, reason: "Duplicate email" });
           continue;
@@ -124,6 +126,17 @@ class UserService {
           continue;
         }
         if (existingUser && !existingUser.isDeleted) {
+          if ((sourceEmail || studentCode) && sourceDecision && existingUser.type === "student") {
+            if (!existingUser.officeUseInfo) existingUser.officeUseInfo = {};
+            if (!existingUser.officeUseInfo.memfOffice) existingUser.officeUseInfo.memfOffice = {};
+            if (existingUser.officeUseInfo.memfOffice.decision !== sourceDecision) {
+              existingUser.officeUseInfo.memfOffice.decision = sourceDecision;
+              await existingUser.save();
+              updatedExisting.push({ id: existingUser._id, name, email: sourceEmail, updatedFields: ["Decision"] });
+              if (sourceEmail) seenEmails.add(sourceEmail);
+              continue;
+            }
+          }
           skipped.push({ row: rowIndex + 1, name, email: sourceEmail, reason: sourceEmail ? "Duplicate email" : "Duplicate student" });
           continue;
         }
@@ -143,6 +156,11 @@ class UserService {
 
         const monthlyFee = cleanNumber(valueOf(row, "monthly fee"));
         if (existingUser?.isDeleted) {
+          if (sourceDecision) {
+            if (!existingUser.officeUseInfo) existingUser.officeUseInfo = {};
+            if (!existingUser.officeUseInfo.memfOffice) existingUser.officeUseInfo.memfOffice = {};
+            existingUser.officeUseInfo.memfOffice.decision = sourceDecision;
+          }
           existingUser.isDeleted = false;
           existingUser.updatedBy = req.user?._id;
           await existingUser.save();
@@ -192,7 +210,7 @@ class UserService {
             membershipNumber: valueOf(row, "father jamaat id"),
             memfOffice: {
               studentCode,
-              decision: normalizeDecision(valueOf(row, "decision")),
+              decision: sourceDecision,
               category: ["STAR", "HOPE", "SEED"].includes(valueOf(row, "category").toUpperCase())
                 ? valueOf(row, "category").toUpperCase()
                 : "SEED",
@@ -208,15 +226,15 @@ class UserService {
 
       return {
         status: 201,
-        message: `${imported.length} students imported successfully. ${skipped.length} rows skipped.`,
-        data: { imported, skipped },
+        message: `${imported.length} students imported. ${updatedExisting.length} existing students updated. ${skipped.length} rows skipped.`,
+        data: { imported, updated: updatedExisting, skipped },
       };
     } catch (error) {
       return { status: 500, message: error.message };
     }
   }
 
-  static async updateStudentFatherNics(req, { onlyBForm = false } = {}) {
+  static async updateStudentFatherNics(req, { onlyBForm = false, onlyDecision = false } = {}) {
     try {
       const file = req.file;
       if (!file?.buffer) {
@@ -246,11 +264,17 @@ class UserService {
         const index = names.map(normalizeHeader).map((name) => headers.indexOf(name)).find((value) => value >= 0);
         return index === undefined ? "" : String(row[index] || "").trim();
       };
-      const hasFatherNic = !onlyBForm && headers.includes(normalizeHeader("Father NIC"));
+      const hasFatherNic = !onlyBForm && !onlyDecision && headers.includes(normalizeHeader("Father NIC"));
       const bFormHeaderNames = ["B-Form No", "B-Form Number", "B.Form", "BFormNo"];
-      const hasBFormNumber = bFormHeaderNames.some((header) => headers.includes(normalizeHeader(header)));
-      if (!hasFatherNic && !hasBFormNumber) {
-        return { status: 400, message: onlyBForm ? "The file must contain a B-Form Number column." : "The file must contain a Father NIC or B-Form Number column." };
+      const hasBFormNumber = !onlyDecision && bFormHeaderNames.some((header) => headers.includes(normalizeHeader(header)));
+      const hasDecision = onlyDecision && headers.includes(normalizeHeader("Decision"));
+      if (!hasFatherNic && !hasBFormNumber && !hasDecision) {
+        const message = onlyDecision
+          ? "The file must contain a Decision column."
+          : onlyBForm
+            ? "The file must contain a B-Form Number column."
+            : "The file must contain a Father NIC or B-Form Number column.";
+        return { status: 400, message };
       }
 
       const updated = [];
@@ -266,24 +290,33 @@ class UserService {
         const sourceBForm = hasBFormNumber
           ? valueOf(row, ...bFormHeaderNames).replace(/\D/g, "")
           : "";
-        if (!name && !email && !studentCode && !sourceNic && !sourceBForm) continue;
+        const sourceDecision = hasDecision ? valueOf(row, "Decision") : "";
+        if (!name && !email && !studentCode && !sourceNic && !sourceBForm && !sourceDecision) continue;
+        if (onlyDecision && !sourceDecision) {
+          skipped.push({ row: rowIndex + 1, name, reason: "No Decision value provided" });
+          continue;
+        }
         if ((hasFatherNic && sourceNic && sourceNic.length !== 13) || (hasBFormNumber && sourceBForm && sourceBForm.length !== 13)) {
           skipped.push({ row: rowIndex + 1, name, reason: onlyBForm ? "B-Form Number must contain 13 digits" : "Father NIC and B-Form Number values must contain 13 digits" });
           continue;
         }
-        if (!sourceNic && !sourceBForm) {
-          skipped.push({ row: rowIndex + 1, name, reason: onlyBForm ? "No B-Form Number value provided" : "No Father NIC or B-Form Number value provided" });
+        if (!sourceNic && !sourceBForm && !sourceDecision) {
+          skipped.push({ row: rowIndex + 1, name, reason: onlyDecision ? "No Decision value provided" : onlyBForm ? "No B-Form Number value provided" : "No Father NIC or B-Form Number value provided" });
+          continue;
+        }
+        if (onlyDecision && !email && !studentCode) {
+          skipped.push({ row: rowIndex + 1, name, reason: "Provide Email or I.D to safely match the existing student" });
           continue;
         }
 
         let student;
         if (email) {
-          student = await User.findOne({ type: "student", email, isDeleted: { $ne: true } }).select("_id name father.cnicNo documents.BFormNo");
+          student = await User.findOne({ type: "student", email, isDeleted: { $ne: true } }).select("_id name father.cnicNo documents.BFormNo officeUseInfo.memfOffice.decision");
         } else if (studentCode) {
-          student = await User.findOne({ type: "student", studentCode, isDeleted: { $ne: true } }).select("_id name father.cnicNo documents.BFormNo");
+          student = await User.findOne({ type: "student", studentCode, isDeleted: { $ne: true } }).select("_id name father.cnicNo documents.BFormNo officeUseInfo.memfOffice.decision");
         } else if (name) {
           const matches = await User.find({ type: "student", name, isDeleted: { $ne: true } })
-            .select("_id name father.cnicNo documents.BFormNo")
+            .select("_id name father.cnicNo documents.BFormNo officeUseInfo.memfOffice.decision")
             .limit(2);
           if (matches.length > 1) {
             skipped.push({ row: rowIndex + 1, name, reason: "Student name is not unique; provide I.D or Email" });
@@ -312,8 +345,12 @@ class UserService {
           student.set("documents.BFormNo", sourceBForm);
           updatedFields.push("B-Form Number");
         }
+        if (sourceDecision && student.officeUseInfo?.memfOffice?.decision !== sourceDecision) {
+          student.set("officeUseInfo.memfOffice.decision", sourceDecision);
+          updatedFields.push("Decision");
+        }
         if (updatedFields.length === 0) {
-          skipped.push({ row: rowIndex + 1, name, reason: "Provided identification numbers already match" });
+          skipped.push({ row: rowIndex + 1, name, reason: onlyDecision ? "Decision already matches" : "Provided identification numbers already match" });
           continue;
         }
 
@@ -323,7 +360,7 @@ class UserService {
 
       return {
         status: 200,
-        message: `${updated.length} existing students' ${onlyBForm ? "B-Form Numbers" : "identification numbers"} updated. ${skipped.length} rows skipped. No students were created.`,
+        message: `${updated.length} existing students' ${onlyDecision ? "Decisions" : onlyBForm ? "B-Form Numbers" : "identification numbers"} updated. ${skipped.length} rows skipped. No students were created.`,
         data: { updated, skipped },
       };
     } catch (error) {

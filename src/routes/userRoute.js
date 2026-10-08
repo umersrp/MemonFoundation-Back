@@ -20,6 +20,7 @@ router.post("/student", verifyTokenOptional, userController.createStudentAPI);
 router.post("/students/import", verifyTokenAndAdminOrSchool, csvUpload.single("file"), userController.importStudentsAPI);
 router.post("/students/update-father-nics", verifyTokenAndAdmin, csvUpload.single("file"), userController.updateStudentFatherNicsAPI);
 router.post("/students/correct-b-form-numbers", verifyTokenAndAdmin, csvUpload.single("file"), userController.correctStudentBFormNumbersAPI);
+router.post("/students/correct-decisions", verifyTokenAndAdmin, csvUpload.single("file"), userController.correctStudentDecisionsAPI);
 
 router.put("/update/:id", verifyToken, userController.updateProfileAPI);
 
