@@ -21,6 +21,11 @@ async function updateStudentFatherNicsAPI(req, res) {
   return res.status(status).send(data);
 }
 
+async function correctStudentBFormNumbersAPI(req, res) {
+  const { status, ...data } = await userService.updateStudentFatherNics(req, { onlyBForm: true });
+  return res.status(status).send(data);
+}
+
 async function updateProfileAPI(req, res) {
   const { status, ...data } = await userService.updateProfile(req);
   return res.status(status).send(data);
@@ -110,6 +115,7 @@ module.exports = {
   createStudentAPI,
   importStudentsAPI,
   updateStudentFatherNicsAPI,
+  correctStudentBFormNumbersAPI,
   updateByAdminAPI,
   getAllStudentsAPI,
   studentsUpdateProfileAPI,

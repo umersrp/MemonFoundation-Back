@@ -90,7 +90,7 @@ class UserService {
               currentSchool: valueOf(row, "school name", "current school", "school"),
               gradeClass: valueOf(row, "grade", "grade/class", "class"),
               residentialAddress: valueOf(row, "residential address", "address"),
-              BFormNo: valueOf(row, "b.form", "b-form", "bform", "b-form no"),
+              BFormNo: valueOf(row, "b.form", "b-form", "bform", "b-form no", "b-form number"),
               academicClass,
               academicSchool,
               academicYear,
@@ -179,7 +179,7 @@ class UserService {
             firstName: valueOf(row, "mother first name", "mother name"),
           },
           documents: {
-            BFormNo: valueOf(row, "b.form", "b-form", "bform", "b-form no"),
+            BFormNo: valueOf(row, "b.form", "b-form", "bform", "b-form no", "b-form number"),
           },
           academicRecords: [{
             ...(academicClass ? { class: academicClass } : {}),
@@ -216,7 +216,7 @@ class UserService {
     }
   }
 
-  static async updateStudentFatherNics(req) {
+  static async updateStudentFatherNics(req, { onlyBForm = false } = {}) {
     try {
       const file = req.file;
       if (!file?.buffer) {
@@ -240,13 +240,17 @@ class UserService {
         return { status: 400, message: "The file must contain a Student Name column." };
       }
 
-      const headers = rows[headerIndex].map((value) => String(value || "").trim().toLowerCase());
+      const normalizeHeader = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+      const headers = rows[headerIndex].map(normalizeHeader);
       const valueOf = (row, ...names) => {
-        const index = names.map((name) => headers.indexOf(name)).find((value) => value >= 0);
+        const index = names.map(normalizeHeader).map((name) => headers.indexOf(name)).find((value) => value >= 0);
         return index === undefined ? "" : String(row[index] || "").trim();
       };
-      if (!headers.includes("father nic")) {
-        return { status: 400, message: "The file must contain a Father NIC column." };
+      const hasFatherNic = !onlyBForm && headers.includes(normalizeHeader("Father NIC"));
+      const bFormHeaderNames = ["B-Form No", "B-Form Number", "B.Form", "BFormNo"];
+      const hasBFormNumber = bFormHeaderNames.some((header) => headers.includes(normalizeHeader(header)));
+      if (!hasFatherNic && !hasBFormNumber) {
+        return { status: 400, message: onlyBForm ? "The file must contain a B-Form Number column." : "The file must contain a Father NIC or B-Form Number column." };
       }
 
       const updated = [];
@@ -258,21 +262,28 @@ class UserService {
         const name = valueOf(row, "student name", "name");
         const email = valueOf(row, "email", "student email").toLowerCase();
         const studentCode = valueOf(row, "i.d", "id", "student code");
-        const sourceNic = valueOf(row, "father nic").replace(/\D/g, "");
-        if (!name && !email && !studentCode && !sourceNic) continue;
-        if (!sourceNic || sourceNic.length !== 13) {
-          skipped.push({ row: rowIndex + 1, name, reason: "Father NIC must contain 13 digits" });
+        const sourceNic = hasFatherNic ? valueOf(row, "father nic").replace(/\D/g, "") : "";
+        const sourceBForm = hasBFormNumber
+          ? valueOf(row, ...bFormHeaderNames).replace(/\D/g, "")
+          : "";
+        if (!name && !email && !studentCode && !sourceNic && !sourceBForm) continue;
+        if ((hasFatherNic && sourceNic && sourceNic.length !== 13) || (hasBFormNumber && sourceBForm && sourceBForm.length !== 13)) {
+          skipped.push({ row: rowIndex + 1, name, reason: onlyBForm ? "B-Form Number must contain 13 digits" : "Father NIC and B-Form Number values must contain 13 digits" });
+          continue;
+        }
+        if (!sourceNic && !sourceBForm) {
+          skipped.push({ row: rowIndex + 1, name, reason: onlyBForm ? "No B-Form Number value provided" : "No Father NIC or B-Form Number value provided" });
           continue;
         }
 
         let student;
         if (email) {
-          student = await User.findOne({ type: "student", email, isDeleted: { $ne: true } }).select("_id name father.cnicNo");
+          student = await User.findOne({ type: "student", email, isDeleted: { $ne: true } }).select("_id name father.cnicNo documents.BFormNo");
         } else if (studentCode) {
-          student = await User.findOne({ type: "student", studentCode, isDeleted: { $ne: true } }).select("_id name father.cnicNo");
+          student = await User.findOne({ type: "student", studentCode, isDeleted: { $ne: true } }).select("_id name father.cnicNo documents.BFormNo");
         } else if (name) {
           const matches = await User.find({ type: "student", name, isDeleted: { $ne: true } })
-            .select("_id name father.cnicNo")
+            .select("_id name father.cnicNo documents.BFormNo")
             .limit(2);
           if (matches.length > 1) {
             skipped.push({ row: rowIndex + 1, name, reason: "Student name is not unique; provide I.D or Email" });
@@ -292,19 +303,27 @@ class UserService {
         }
         processedIds.add(studentId);
 
-        if (student.father?.cnicNo === sourceNic) {
-          skipped.push({ row: rowIndex + 1, name, reason: "Father NIC already matches" });
+        const updatedFields = [];
+        if (sourceNic && student.father?.cnicNo !== sourceNic) {
+          student.set("father.cnicNo", sourceNic);
+          updatedFields.push("Father NIC");
+        }
+        if (sourceBForm && student.documents?.BFormNo !== sourceBForm) {
+          student.set("documents.BFormNo", sourceBForm);
+          updatedFields.push("B-Form Number");
+        }
+        if (updatedFields.length === 0) {
+          skipped.push({ row: rowIndex + 1, name, reason: "Provided identification numbers already match" });
           continue;
         }
 
-        student.set("father.cnicNo", sourceNic);
         await student.save();
-        updated.push({ id: student._id, name: student.name, fatherNic: sourceNic });
+        updated.push({ id: student._id, name: student.name, updatedFields });
       }
 
       return {
         status: 200,
-        message: `${updated.length} existing students' Father NIC updated. ${skipped.length} rows skipped. No students were created.`,
+        message: `${updated.length} existing students' ${onlyBForm ? "B-Form Numbers" : "identification numbers"} updated. ${skipped.length} rows skipped. No students were created.`,
         data: { updated, skipped },
       };
     } catch (error) {
