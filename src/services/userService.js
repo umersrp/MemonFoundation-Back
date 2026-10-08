@@ -216,6 +216,102 @@ class UserService {
     }
   }
 
+  static async updateStudentFatherNics(req) {
+    try {
+      const file = req.file;
+      if (!file?.buffer) {
+        return { status: 400, message: "A CSV or Excel file is required." };
+      }
+
+      const isExcelFile = /\.xlsx?$/i.test(file.originalname || "");
+      const workbook = isExcelFile ? XLSX.read(file.buffer, { type: "buffer" }) : null;
+      const rows = isExcelFile
+        ? XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: "" })
+        : parse(file.buffer.toString("utf8"), {
+            bom: true,
+            skip_empty_lines: true,
+            relax_column_count: true,
+          });
+      const headerIndex = rows.findIndex((row) =>
+        row.some((value) => ["student name", "name"].includes(String(value || "").trim().toLowerCase()))
+      );
+
+      if (headerIndex < 0) {
+        return { status: 400, message: "The file must contain a Student Name column." };
+      }
+
+      const headers = rows[headerIndex].map((value) => String(value || "").trim().toLowerCase());
+      const valueOf = (row, ...names) => {
+        const index = names.map((name) => headers.indexOf(name)).find((value) => value >= 0);
+        return index === undefined ? "" : String(row[index] || "").trim();
+      };
+      if (!headers.includes("father nic")) {
+        return { status: 400, message: "The file must contain a Father NIC column." };
+      }
+
+      const updated = [];
+      const skipped = [];
+      const processedIds = new Set();
+
+      for (let rowIndex = headerIndex + 1; rowIndex < rows.length; rowIndex += 1) {
+        const row = rows[rowIndex];
+        const name = valueOf(row, "student name", "name");
+        const email = valueOf(row, "email", "student email").toLowerCase();
+        const studentCode = valueOf(row, "i.d", "id", "student code");
+        const sourceNic = valueOf(row, "father nic").replace(/\D/g, "");
+        if (!name && !email && !studentCode && !sourceNic) continue;
+        if (!sourceNic || sourceNic.length !== 13) {
+          skipped.push({ row: rowIndex + 1, name, reason: "Father NIC must contain 13 digits" });
+          continue;
+        }
+
+        let student;
+        if (email) {
+          student = await User.findOne({ type: "student", email, isDeleted: { $ne: true } }).select("_id name father.cnicNo");
+        } else if (studentCode) {
+          student = await User.findOne({ type: "student", studentCode, isDeleted: { $ne: true } }).select("_id name father.cnicNo");
+        } else if (name) {
+          const matches = await User.find({ type: "student", name, isDeleted: { $ne: true } })
+            .select("_id name father.cnicNo")
+            .limit(2);
+          if (matches.length > 1) {
+            skipped.push({ row: rowIndex + 1, name, reason: "Student name is not unique; provide I.D or Email" });
+            continue;
+          }
+          student = matches[0];
+        }
+
+        if (!student) {
+          skipped.push({ row: rowIndex + 1, name, reason: "No matching existing student found" });
+          continue;
+        }
+        const studentId = String(student._id);
+        if (processedIds.has(studentId)) {
+          skipped.push({ row: rowIndex + 1, name, reason: "Student appears more than once in the file" });
+          continue;
+        }
+        processedIds.add(studentId);
+
+        if (student.father?.cnicNo === sourceNic) {
+          skipped.push({ row: rowIndex + 1, name, reason: "Father NIC already matches" });
+          continue;
+        }
+
+        student.set("father.cnicNo", sourceNic);
+        await student.save();
+        updated.push({ id: student._id, name: student.name, fatherNic: sourceNic });
+      }
+
+      return {
+        status: 200,
+        message: `${updated.length} existing students' Father NIC updated. ${skipped.length} rows skipped. No students were created.`,
+        data: { updated, skipped },
+      };
+    } catch (error) {
+      return { status: 500, message: error.message };
+    }
+  }
+
   // static async createTutor(req) {
   //   try {
   //     const { userId } = req.user;
